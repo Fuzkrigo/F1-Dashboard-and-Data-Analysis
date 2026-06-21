@@ -1,0 +1,65 @@
+# =============================================================================
+# requirements.txt — F1 Insights Engine
+#
+# [EN] Python package dependencies for the F1 Insights Engine.
+# Includes packages for the API (FastAPI, Uvicorn), database (SQLAlchemy,
+# asyncpg, aiosqlite), telemetry (FastF1, pandas), data fetching (requests),
+# and configuration (python-dotenv, pydantic).
+# Versions are pinned to ensure reproducible builds and mitigate known
+# vulnerabilities in transitive dependencies.
+#
+# [PT-BR] Dependências Python do F1 Insights Engine.
+# Inclui pacotes para a API (FastAPI, Uvicorn), banco de dados (SQLAlchemy,
+# asyncpg, aiosqlite), telemetria (FastF1, pandas), busca de dados (requests)
+# e configuração (python-dotenv, pydantic).
+#
+# Author: Bruno Krieger
+# =============================================================================
+
+# --- API ---
+fastapi
+uvicorn
+
+# --- Database ---
+sqlalchemy
+asyncpg
+aiosqlite
+
+# --- Telemetry (FastF1 live timing) ---
+fastf1
+pandas
+
+# --- Charts (web frontend via Plotly CDN — pandas needed by FastF1) ---
+plotly
+
+# --- HTTP / Data Fetching ---
+requests>=2.32.5
+
+# --- Configuration & Validation ---
+python-dotenv
+pydantic
+pydantic-settings
+
+# --- Pinned transitive dependencies (security) ---
+pillow>=12.1.1
+urllib3>=2.6.3
+
+# =============================================================================
+# STARTUP COMMANDS / COMANDOS DE INICIALIZAÇÃO
+#
+# --- Step 1: Install dependencies ---
+#   pip install -r requirements.txt
+#
+# --- Step 2: Run ETL Pipeline (first time only) ---
+#   python -m src.etl.run_pipeline --years 2023 2024 2025
+#
+# --- Step 3: Start API ---
+#   python -m uvicorn src.api.main:app --reload --port 8000
+#
+# --- Step 4: Open frontend ---
+#   cd src/web && python -m http.server 3000
+#   Then open http://localhost:3000 in your browser
+#
+# --- Docker (all services) ---
+#   docker-compose up --build
+# =============================================================================

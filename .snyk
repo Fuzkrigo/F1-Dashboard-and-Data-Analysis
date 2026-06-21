@@ -1,0 +1,52 @@
+# =============================================================================
+# .snyk — F1 Insights Engine
+#
+# [EN] Snyk policy file to ignore known vulnerabilities in transitive
+# dependencies that have no available remediation. These are low-risk
+# for this application (local data pipeline / study project).
+#
+# [PT-BR] Arquivo de política do Snyk para ignorar vulnerabilidades
+# conhecidas em dependências transitivas que não possuem correção
+# disponível. São de baixo risco para esta aplicação (pipeline de dados
+# local / projeto de estudo).
+#
+# Author: Bruno Santos Krieger
+# =============================================================================
+
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+ignore:
+  # pillow — Out-of-bounds Write (no fix available)
+  SNYK-PYTHON-PILLOW-*:
+    - '*':
+        reason: >
+          No remediation available. Low risk for this local data pipeline
+          project. Package upgraded to latest version (>=12.1.1).
+        expires: 2027-02-20T00:00:00.000Z
+
+  # protobuf — Uncontrolled Recursion (no fix available)
+  SNYK-PYTHON-PROTOBUF-*:
+    - '*':
+        reason: >
+          No remediation available. Low risk — protobuf is a transitive
+          dependency of streamlit. Upgraded to latest version (>=6.33.5).
+        expires: 2027-02-20T00:00:00.000Z
+
+  # tornado — Algorithmic Complexity, HTTP Header Injection, Excessive Iteration
+  SNYK-PYTHON-TORNADO-*:
+    - '*':
+        reason: >
+          No remediation available. Low risk — tornado is a transitive
+          dependency of streamlit. Upgraded to latest version (>=6.5.4).
+        expires: 2027-02-20T00:00:00.000Z
+
+  # urllib3 — Data Amplification, Resource Allocation
+  SNYK-PYTHON-URLLIB3-*:
+    - '*':
+        reason: >
+          No remediation available. Low risk — urllib3 is a transitive
+          dependency of requests. Upgraded to latest version (>=2.6.3).
+        expires: 2027-02-20T00:00:00.000Z
+
+patch: {}
