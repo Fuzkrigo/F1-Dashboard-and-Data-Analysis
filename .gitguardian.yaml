@@ -1,0 +1,23 @@
+# =============================================================================
+# .gitguardian.yaml — F1 Insights Engine
+#
+# [EN] Configuration file for GitGuardian secret scanning. Defines paths
+# that should be excluded from secret detection to avoid false positives.
+# Currently ignores .env and .env.example files, which are expected to
+# contain environment variable placeholders.
+#
+# [PT-BR] Arquivo de configuração para a varredura de segredos do
+# GitGuardian. Define caminhos que devem ser excluídos da detecção de
+# segredos para evitar falsos positivos. Atualmente ignora arquivos
+# .env e .env.example, que contêm placeholders de variáveis de ambiente.
+#
+# Author: Bruno Santos Krieger
+# =============================================================================
+
+version: 2
+
+secret:
+  ignored-paths:
+    - "**/.env"
+    - "**/.env.example"
+    - "**/src/db/database.py"

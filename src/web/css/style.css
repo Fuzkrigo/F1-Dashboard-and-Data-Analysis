@@ -1,0 +1,694 @@
+/*
+   F1 Insights Engine - Premium Cyberpunk HUD CSS
+   Author: Bruno Krieger
+*/
+
+:root {
+  --bg-base: #05080f;
+  --bg-surface: rgba(14, 21, 37, 0.7);
+  --bg-glass: rgba(20, 29, 48, 0.5);
+
+  --accent-red: #ff1801; /* F1 Red */
+  --accent-cyan: #00f0ff; /* Cyberpunk Cyan */
+  --accent-yellow: #fef200; /* Pirelli Yellow */
+  --accent-orange: #ff8a00; /* McLaren Orange */
+
+  --text-main: #f8f9fa;
+  --text-muted: #8aa4c8;
+
+  --glow-cyan: 0 0 10px rgba(0, 240, 255, 0.3), 0 0 20px rgba(0, 240, 255, 0.2);
+  --glow-red: 0 0 10px rgba(255, 24, 1, 0.4);
+
+  --font-header: "Orbitron", sans-serif;
+  --font-body: "Inter", sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ==========================================================================
+   Custom UI Scrollbar
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+  border-left: 1px solid rgba(0, 240, 255, 0.1);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.2);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+/* ==========================================================================
+   Scanlines & Effects
+   ========================================================================== */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: repeating-linear-gradient(
+    transparent 0%,
+    rgba(0, 240, 255, 0.03) 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+}
+
+/* ==========================================================================
+   Layout Structure
+   ========================================================================== */
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* ==========================================================================
+   Sidebar Navigation
+   ========================================================================== */
+.sidebar {
+  width: 225px;
+  min-width: 225px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid rgba(0, 240, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0;
+  position: relative;
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.sidebar-header {
+  padding: 0 2rem;
+  margin-bottom: 2rem;
+}
+
+.sidebar-header h2 {
+  font-family: var(--font-header);
+  font-size: 1.5rem;
+  color: var(--text-main);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.blinking-dot {
+  color: var(--accent-red);
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.global-filters {
+  padding: 0 2rem;
+  margin-bottom: 3rem;
+}
+
+.global-filters label {
+  font-family: var(--font-header);
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+  display: block;
+  margin-bottom: 0.5rem;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.select-wrapper select {
+  width: 100%;
+  appearance: none;
+  background-color: rgba(10, 25, 47, 0.9);
+  border: 1px solid var(--accent-cyan);
+  color: var(--text-main);
+  padding: 0.5rem 1rem;
+  font-family: var(--font-header);
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+.select-wrapper select:focus,
+.select-wrapper select:hover {
+  border-color: var(--accent-red);
+  box-shadow:
+    0 0 15px rgba(255, 24, 1, 0.3),
+    inset 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.select-wrapper select option {
+  background-color: #0b1120;
+  color: var(--text-main);
+  padding: 10px;
+  font-family: var(--font-header);
+}
+
+.nav-links {
+  list-style: none;
+  flex-grow: 1;
+}
+
+.nav-links li {
+  padding: 1rem 2rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-links li:hover {
+  color: var(--text-main);
+  background: rgba(0, 240, 255, 0.05);
+}
+
+.nav-links li.active {
+  color: var(--accent-cyan);
+  border-left-color: var(--accent-cyan);
+  background: linear-gradient(
+    90deg,
+    rgba(0, 240, 255, 0.1) 0%,
+    transparent 100%
+  );
+  text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+}
+
+.nav-links .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.nav-links li:hover .icon,
+.nav-links li.active .icon {
+  color: var(--accent-cyan);
+  filter: drop-shadow(0 0 5px var(--accent-cyan));
+}
+
+.sidebar-footer {
+  padding: 2rem;
+  position: relative;
+}
+
+.sidebar-footer p {
+  font-family: var(--font-header);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.status-ok {
+  color: #00ff66;
+  text-shadow: 0 0 10px #00ff66;
+}
+
+/* ==========================================================================
+   Main Content Area
+   ========================================================================== */
+.main-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1rem 2.5rem;
+  position: relative;
+}
+
+/* Background red sun decoration */
+.main-content::before {
+  content: "";
+  position: fixed;
+  top: -20%;
+  right: -10%;
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 24, 1, 0.08) 0%,
+    transparent 60%
+  );
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   HUD Headers
+   ========================================================================== */
+.hud-header {
+  position: relative;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.3);
+  padding-bottom: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.hud-header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  width: 150px;
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+#page-title {
+  font-family: var(--font-header);
+  font-size: 2.5rem;
+  color: var(--text-main);
+  letter-spacing: 4px;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+#page-subtitle {
+  font-family: var(--font-header);
+  font-size: 0.9rem;
+  color: var(--accent-cyan);
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-bar {
+  display: inline-block;
+  height: 4px;
+  width: 40px;
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* ==========================================================================
+   Views & Routing
+   ========================================================================== */
+.view {
+  display: none;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.view.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   KPI Grid
+   ========================================================================== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.hud-bracket {
+  position: relative;
+  padding: 1.5rem;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 15px) 0,
+    100% 15px,
+    100% 100%,
+    15px 100%,
+    0 calc(100% - 15px)
+  );
+}
+
+.hud-bracket::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 2px;
+  background: var(--accent-cyan);
+}
+.hud-bracket::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 20px;
+  background: var(--accent-cyan);
+}
+
+.kpi-label {
+  font-family: var(--font-header);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-value {
+  font-family: var(--font-header);
+  font-size: 3rem;
+  color: var(--accent-red);
+  font-weight: 700;
+  text-shadow: var(--glow-red);
+  line-height: 1;
+}
+
+/* ==========================================================================
+   Charts & Tables (MAXIMIZED AREA)
+   ========================================================================== */
+.charts-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.charts-full-row {
+  display: block;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+/* When forced to width: 100%, single charts will span fully */
+
+.chart-container h3 {
+  font-family: var(--font-header);
+  font-size: 1.2rem;
+  color: var(--accent-cyan);
+  margin-bottom: 1rem;
+  letter-spacing: 1px;
+}
+
+.plotly-container {
+  width: 100%;
+  min-height: 50vh; /* Reduced from 65vh to fit on a master single screen */
+  transition: all 0.3s ease;
+}
+
+.plotly-container.evolution-full {
+  min-height: 57vh; /* Reduced to fit on a single screen without scrolling */
+}
+
+.plotly-container.h2h-chart-full {
+  min-height: 38vh; /* Reduces height further to accommodate the stats panel without scrolling */
+}
+
+/* ==========================================================================
+   H2H Stats Panel
+   ========================================================================== */
+.stats-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 15px;
+  text-align: center;
+  padding: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.stat-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.stat-title {
+  font-family: var(--font-header);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.stat-values {
+  font-family: var(--font-header);
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.s-val-1 {
+  color: #00f0ff;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+.s-val-2 {
+  color: #ff4b4b;
+  text-shadow: 0 0 10px rgba(255, 75, 75, 0.4);
+}
+.s-vs {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0 5px;
+}
+
+.kpi-subvalue {
+  font-family: var(--font-header);
+  color: var(--accent-cyan);
+  font-size: 1rem;
+  margin-top: 5px;
+  text-shadow: var(--glow-cyan);
+}
+
+/*
+  Head-to-Head Controls
+*/
+.h2h-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.h2h-controls .select-wrapper {
+  flex: 1;
+}
+
+.vs-text {
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--accent-red);
+  text-shadow: 0 0 10px rgba(255, 75, 75, 0.5);
+}
+
+.tables-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.table-container h3 {
+  font-family: var(--font-header);
+  font-size: 1.2rem;
+  color: var(--accent-yellow);
+  margin-bottom: 1.5rem;
+  letter-spacing: 1px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th {
+  text-align: left;
+  padding: 1rem;
+  font-family: var(--font-header);
+  font-size: 0.8rem;
+  color: var(--text-main);
+  background: rgba(255, 138, 0, 0.2); /* Orange header */
+  border-bottom: 2px solid var(--accent-orange);
+  letter-spacing: 1px;
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+tr:hover {
+  background: rgba(0, 240, 255, 0.1);
+}
+
+/* Points highlighting */
+td:nth-child(3) {
+  font-family: var(--font-header);
+  color: var(--accent-cyan);
+  font-weight: bold;
+}
+
+/* Position 1 styling */
+tbody tr:first-child td:first-child {
+  color: gold;
+  font-weight: bold;
+  text-shadow: 0 0 5px gold;
+}
+
+/* Timeline/Races styling */
+.timeline-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.race-card {
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 3px solid var(--accent-cyan);
+  padding: 1rem;
+  width: calc(33.333% - 1rem);
+  min-width: 200px;
+}
+
+.race-name {
+  font-family: var(--font-header);
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.race-circuit {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 5px 0;
+}
+
+.race-date {
+  font-family: var(--font-header);
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+}
+
+/* Cantoneiras vermelhas exclusivas para o botão de limpar dados */
+#btn-clear-telemetry.hud-bracket::before,
+#btn-clear-telemetry.hud-bracket::after {
+  background: #ff5050;
+}
+
+/* Hoverlabel / Hovermode customizado na Plotly afeta essas classes ocultas.
+Este bloco de cor extra protege qualquer resíduo original do plotly. */
+.plotly .hoverlayer .hovertext text {
+    fill: #00F0FF !important;
+}
+
+/* ==========================================================================
+   F1 ENGINE - GLOBAL CUSTOM TOOLTIP
+   ========================================================================== */
+.f1-custom-tooltip {
+    position: absolute;
+    z-index: 99999;
+    pointer-events: none;
+    background: rgba(11, 20, 38, 0.95);
+    border: 1px solid #00F0FF;
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-family: 'Orbitron', sans-serif;
+    color: #E8E8E8;
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
+    font-size: 0.9rem;
+    min-width: 150px;
+    transition: opacity 0.1s ease-out;
+}
+
+.f1-custom-tooltip .tooltip-title {
+    font-weight: bold;
+    color: #8AA4C8;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(138, 164, 200, 0.3);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.f1-custom-tooltip .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: 15px;
+}
+
+.f1-custom-tooltip .tooltip-row:last-child {
+    margin-bottom: 0;
+}
+
+.f1-custom-tooltip .tooltip-color-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    box-shadow: 0 0 5px currentColor;
+}
+
+.f1-custom-tooltip .tooltip-name {
+    flex: 1;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.f1-custom-tooltip .tooltip-value {
+    font-weight: bold;
+    text-align: right;
+    white-space: nowrap;
+}

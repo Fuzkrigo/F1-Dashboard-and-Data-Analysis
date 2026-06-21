@@ -1,0 +1,48 @@
+# =============================================================================
+# .gitignore — F1 Insights Engine
+#
+# [EN] Specifies files and directories that Git should ignore and not track.
+# Includes environment files (.env), Python bytecode (__pycache__, *.pyc),
+# test artifacts (.pytest_cache, .coverage), build outputs (dist, build),
+# macOS metadata (.DS_Store), and IDE configuration folders (.vscode, .idea).
+#
+# [PT-BR] Especifica arquivos e diretórios que o Git deve ignorar e não
+# rastrear. Inclui arquivos de ambiente (.env), bytecode Python (__pycache__,
+# *.pyc), artefatos de teste (.pytest_cache, .coverage), saídas de build
+# (dist, build), metadados do macOS (.DS_Store) e pastas de configuração
+# de IDE (.vscode, .idea).
+#
+# Author: Bruno Santos Krieger
+# =============================================================================
+
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+dist/
+build/
+*.egg-info/
+.DS_Store
+.vscode/
+.idea/
+
+# Virtual environment / Ambiente virtual Python
+.venv/
+venv/
+env/
+
+# Databases
+*.db
+
+# Runtime logs
+*.log
+
+# FastF1 cache (pode ser grande - regenerado automaticamente)
+.cache_fastf1/
+
+# Documentos de processo / planejamento interno (uso pessoal, não versionar)
+# Process / planning docs (personal use, not versioned)
+PLANEJAMENTO.md
+CHECKLIST.md
+PROXIMOS_PASSOS.md

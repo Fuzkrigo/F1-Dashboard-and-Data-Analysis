@@ -1,0 +1,70 @@
+# =============================================================================
+# docker-compose.yml — F1 Insights Engine
+#
+# [EN] Defines the multi-container Docker Compose orchestration.
+# Contains three services:
+#   - db:  PostgreSQL 15 database with persistent volume and health checks.
+#   - api: FastAPI application, connects to the database, exposes port 8000.
+#   - web: Nginx serving the HTML/JS frontend on port 80.
+#
+# [PT-BR] Define a orquestração multi-container Docker Compose.
+# Contém três serviços:
+#   - db:  Banco de dados PostgreSQL 15 com volume persistente e health checks.
+#   - api: Aplicação FastAPI conectada ao banco, expõe a porta 8000.
+#   - web: Nginx servindo o frontend HTML/JS na porta 80.
+#
+# Author: Bruno Krieger
+# =============================================================================
+
+version: '3.8'
+
+# [EN] Explicit project name — decoupled from the folder name (which has spaces).
+# [PT-BR] Nome explícito do projeto — desacoplado do nome da pasta (que tem espaços).
+name: f1-dashboard
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - USE_SQLITE=False
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./src/web:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
