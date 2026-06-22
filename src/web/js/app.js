@@ -649,15 +649,6 @@ async function loadTelemetry(season) {
                 };
 
                 const clampDec = (arr) => arr ? arr.map(v => typeof v === 'number' ? Number(v.toFixed(3)) : v) : [];
-                const buildTrace = (xData, yData, name, color, yaxisIdx, unit = '') => ({
-                    x: clampDec(xData),
-                    y: clampDec(yData),
-                    mode: 'lines',
-                    name: `<span style="color: ${color}">${name}</span>`,
-                    line: { color: color, width: 2 },
-                    yaxis: 'y' + (yaxisIdx === 1 ? '' : yaxisIdx),
-                    showlegend: yaxisIdx === 1
-                });
 
                 // Iterar Linearmente sobre a resposta N-pilotos da API
                 Object.values(data.drivers).forEach((driverData) => {

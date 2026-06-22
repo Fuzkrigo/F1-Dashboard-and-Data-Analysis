@@ -412,13 +412,3 @@ def extract_laps(year: int, round_num: int) -> list[dict]:
     if races:
         return races[0].get("Laps", [])
     return []
-
-
-(
-    """
-    CodeContent = above
-    Description = Reescrita completa do extract.py com 12 funções de extração, paginação automática, retry com backoff exponencial, e rate limiting. Base URL atualizada para Jolpica API.
-    EmptyFile = false
-    IsArtifact = false
-""",
-)
