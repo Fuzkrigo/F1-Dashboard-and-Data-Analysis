@@ -25,10 +25,40 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Check if we should use SQLite (default for local non-docker execution)
+def _to_async_url(url: str) -> str:
+    """
+    Normalize a PostgreSQL URL to use the asyncpg driver.
+
+    [EN] Connection strings (e.g. from Supabase) come as ``postgresql://`` or
+    ``postgres://``; SQLAlchemy's async engine needs ``postgresql+asyncpg://``.
+    Already-normalized URLs are returned unchanged.
+
+    [PT-BR] Connection strings (ex: do Supabase) vêm como ``postgresql://`` ou
+    ``postgres://``; o engine assíncrono do SQLAlchemy precisa de
+    ``postgresql+asyncpg://``. URLs já normalizadas são retornadas como estão.
+
+    Author: Bruno Krieger
+    """
+    if url.startswith("postgresql+asyncpg://"):
+        return url
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    return url
+
+
+# Priority 1: a full connection string (e.g. Supabase) via DATABASE_URL.
+# Priority 2: SQLite (default for local dev), or PostgreSQL composed from parts.
+# Prioridade 1: connection string completa (ex: Supabase) via DATABASE_URL.
+# Prioridade 2: SQLite (padrão dev local), ou PostgreSQL montado das partes.
+RAW_DATABASE_URL = os.getenv("DATABASE_URL")
 USE_SQLITE = os.getenv("USE_SQLITE", "True").lower() == "true"
 
-if USE_SQLITE:
+if RAW_DATABASE_URL:
+    DATABASE_URL = _to_async_url(RAW_DATABASE_URL)
+    logger.info("Using DATABASE_URL from environment (PostgreSQL)")
+elif USE_SQLITE:
     DATABASE_URL = "sqlite+aiosqlite:///./f1_insights.db"
     logger.info("Using SQLite database")
 else:

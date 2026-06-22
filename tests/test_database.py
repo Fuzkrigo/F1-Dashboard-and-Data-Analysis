@@ -22,17 +22,27 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 
 @pytest.fixture
-def restore_database_module():
+def restore_database_module(monkeypatch):
     """
     Always reload `src.db.database` with the SQLite default after the test.
 
-    [EN] Ensures that any monkeypatched env or mocked engine inside a test
-    doesn't leak to subsequent tests that depend on the real SQLite engine.
-    [PT-BR] Garante que qualquer monkeypatch de env ou engine mockado num
-    teste não vaze para testes seguintes que dependem do engine SQLite real.
+    [EN] Clears DATABASE_URL before the test (so a local .env with a Supabase
+    URL doesn't override the branch under test) and ensures that any
+    monkeypatched env or mocked engine inside a test doesn't leak to
+    subsequent tests that depend on the real SQLite engine.
+    [PT-BR] Limpa DATABASE_URL antes do teste (para que um .env local com a URL
+    do Supabase não sobreponha o ramo testado) e garante que qualquer monkeypatch
+    de env ou engine mockado num teste não vaze para os testes seguintes que
+    dependem do engine SQLite real.
     """
     import os
 
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    # Neutralize load_dotenv so a developer's .env (e.g. a Supabase URL) is not
+    # re-read during importlib.reload inside the branch tests below.
+    # Neutraliza load_dotenv para que o .env do dev (ex: URL do Supabase) não
+    # seja relido durante o importlib.reload nos testes de branch abaixo.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **kw: None)
     yield
     # Force-restore SQLite default state
     os.environ["USE_SQLITE"] = "True"
@@ -122,6 +132,20 @@ def test_postgres_branch_uses_defaults_when_env_missing(
         captured["url"]
         == "postgresql+asyncpg://postgres:postgres@localhost:5432/f1_insights"
     )
+
+
+def test_database_url_branch_overrides(monkeypatch, restore_database_module):
+    """DATABASE_URL (e.g. Supabase) takes priority and is normalized to asyncpg."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@host:5432/db")
+    monkeypatch.setenv("USE_SQLITE", "True")  # ignored when DATABASE_URL is set
+    captured = _capture_url_with_fake_engine(monkeypatch)
+
+    import src.db.database as db_module
+
+    importlib.reload(db_module)
+
+    assert captured["url"] == "postgresql+asyncpg://u:p@host:5432/db"
+    assert db_module.RAW_DATABASE_URL is not None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
