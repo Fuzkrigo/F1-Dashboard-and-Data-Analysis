@@ -29,16 +29,12 @@ aiosqlite
 fastf1
 pandas
 
-# --- Charts (web frontend via Plotly CDN — pandas needed by FastF1) ---
-plotly
-
 # --- HTTP / Data Fetching ---
 requests>=2.32.5
 
 # --- Configuration & Validation ---
 python-dotenv
 pydantic
-pydantic-settings
 
 # --- Pinned transitive dependencies (security) ---
 pillow>=12.1.1

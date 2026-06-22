@@ -17,9 +17,12 @@ status de finalização.
 Author: Bruno Krieger
 """
 
+import logging
 import time
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration / Configuração
@@ -73,7 +76,7 @@ def _fetch_paginated(url: str, table_key: str, list_key: str) -> list[dict]:
 
         data = _fetch_with_retry(paginated_url)
         if data is None:
-            print(f"  [WARN] Failed to fetch {paginated_url}, skipping...")
+            logger.warning(f"Failed to fetch {paginated_url}, skipping...")
             break
 
         mr_data = data.get("MRData", {})
@@ -122,8 +125,8 @@ def _fetch_with_retry(url: str) -> dict | None:
             return response.json()
         except requests.exceptions.RequestException as e:
             wait_time = RETRY_BACKOFF**attempt
-            print(
-                f"  [RETRY {attempt + 1}/{MAX_RETRIES}] "
+            logger.warning(
+                f"[RETRY {attempt + 1}/{MAX_RETRIES}] "
                 f"Error: {e}. Waiting {wait_time}s..."
             )
             time.sleep(wait_time)
@@ -148,7 +151,7 @@ def extract_seasons() -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print("  Extracting seasons...")
+    logger.info("  Extracting seasons...")
     return _fetch_paginated(f"{BASE_URL}/seasons.json", "SeasonTable", "Seasons")
 
 
@@ -164,7 +167,7 @@ def extract_statuses() -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print("  Extracting statuses...")
+    logger.info("  Extracting statuses...")
     return _fetch_paginated(f"{BASE_URL}/status.json", "StatusTable", "Status")
 
 
@@ -180,7 +183,7 @@ def extract_circuits() -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print("  Extracting circuits...")
+    logger.info("  Extracting circuits...")
     return _fetch_paginated(f"{BASE_URL}/circuits.json", "CircuitTable", "Circuits")
 
 
@@ -196,7 +199,7 @@ def extract_drivers() -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print("  Extracting drivers...")
+    logger.info("  Extracting drivers...")
     return _fetch_paginated(f"{BASE_URL}/drivers.json", "DriverTable", "Drivers")
 
 
@@ -212,7 +215,7 @@ def extract_constructors() -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print("  Extracting constructors...")
+    logger.info("  Extracting constructors...")
     return _fetch_paginated(
         f"{BASE_URL}/constructors.json", "ConstructorTable", "Constructors"
     )
@@ -233,7 +236,7 @@ def extract_races(year: int) -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print(f"  Extracting races for {year}...")
+    logger.info(f"  Extracting races for {year}...")
     return _fetch_paginated(f"{BASE_URL}/{year}.json", "RaceTable", "Races")
 
 
@@ -324,7 +327,7 @@ def extract_driver_standings(year: int) -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print(f"  Extracting driver standings for {year}...")
+    logger.info(f"  Extracting driver standings for {year}...")
     standings_lists = _fetch_paginated(
         f"{BASE_URL}/{year}/driverstandings.json",
         "StandingsTable",
@@ -350,7 +353,7 @@ def extract_constructor_standings(year: int) -> list[dict]:
 
     Author: Bruno Krieger
     """
-    print(f"  Extracting constructor standings for {year}...")
+    logger.info(f"  Extracting constructor standings for {year}...")
     standings_lists = _fetch_paginated(
         f"{BASE_URL}/{year}/constructorstandings.json",
         "StandingsTable",
@@ -412,13 +415,3 @@ def extract_laps(year: int, round_num: int) -> list[dict]:
     if races:
         return races[0].get("Laps", [])
     return []
-
-
-(
-    """
-    CodeContent = above
-    Description = Reescrita completa do extract.py com 12 funções de extração, paginação automática, retry com backoff exponencial, e rate limiting. Base URL atualizada para Jolpica API.
-    EmptyFile = false
-    IsArtifact = false
-""",
-)

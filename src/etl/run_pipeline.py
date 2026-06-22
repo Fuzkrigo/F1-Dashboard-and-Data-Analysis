@@ -18,8 +18,10 @@ Author: Bruno Krieger
 
 import argparse
 import asyncio
+import logging
 import time
 
+from src.core.logging_config import configure_logging
 from src.db.database import AsyncSessionLocal
 from src.etl.extract import (
     extract_circuits,
@@ -69,6 +71,8 @@ from src.etl.transform import (
     transform_statuses,
 )
 
+logger = logging.getLogger(__name__)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Pipeline Orchestration / Orquestração do Pipeline
 # ─────────────────────────────────────────────────────────────────────────────
@@ -89,9 +93,9 @@ async def run_global_entities() -> None:
 
     Author: Bruno Krieger
     """
-    print("\n" + "=" * 60)
-    print("STEP 1: Loading global entities")
-    print("=" * 60)
+    logger.info("\n" + "=" * 60)
+    logger.info("STEP 1: Loading global entities")
+    logger.info("=" * 60)
 
     # Seasons / Temporadas
     raw_seasons = extract_seasons()
@@ -137,9 +141,9 @@ async def run_year_pipeline(year: int, include_laps: bool = False) -> None:
 
     Author: Bruno Krieger
     """
-    print(f"\n{'=' * 60}")
-    print(f"STEP 2: Processing season {year}")
-    print(f"{'=' * 60}")
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"STEP 2: Processing season {year}")
+    logger.info(f"{'=' * 60}")
 
     # ── Races / Corridas ────────────────────────────────────────
     raw_races = extract_races(year)
@@ -156,7 +160,7 @@ async def run_year_pipeline(year: int, include_laps: bool = False) -> None:
     for race in clean_races:
         round_num = race["round"]
         race_name = race["race_name"]
-        print(f"\n  Processing R{round_num:02d}: {race_name}...")
+        logger.info(f"\n  Processing R{round_num:02d}: {race_name}...")
 
         # Race Results / Resultados
         raw_results = extract_results(year, round_num)
@@ -195,16 +199,16 @@ async def run_year_pipeline(year: int, include_laps: bool = False) -> None:
                 count = await load_laps(clean_laps, year, round_num)
                 total_laps += count
 
-    print(f"\n  Season {year} per-race totals:")
-    print(f"    Results:    {total_results} new")
-    print(f"    Qualifying: {total_qualifying} new")
-    print(f"    Sprint:     {total_sprint} new")
-    print(f"    Pit Stops:  {total_pit_stops} new")
+    logger.info(f"\n  Season {year} per-race totals:")
+    logger.info(f"    Results:    {total_results} new")
+    logger.info(f"    Qualifying: {total_qualifying} new")
+    logger.info(f"    Sprint:     {total_sprint} new")
+    logger.info(f"    Pit Stops:  {total_pit_stops} new")
     if include_laps:
-        print(f"    Lap Times:  {total_laps} new")
+        logger.info(f"    Lap Times:  {total_laps} new")
 
     # ── Standings / Classificações ──────────────────────────────
-    print(f"\n  Loading standings for {year}...")
+    logger.info(f"\n  Loading standings for {year}...")
 
     raw_driver_standings = extract_driver_standings(year)
     if raw_driver_standings:
@@ -243,11 +247,11 @@ async def main(years: list[int], include_laps: bool = False) -> None:
     """
     start_time = time.time()
 
-    print("=" * 60)
-    print("F1 Insights Engine — ETL Pipeline")
-    print(f"Years: {years}")
-    print(f"Include laps: {include_laps}")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("F1 Insights Engine — ETL Pipeline")
+    logger.info(f"Years: {years}")
+    logger.info(f"Include laps: {include_laps}")
+    logger.info("=" * 60)
 
     # Step 0: Create tables / Criar tabelas
     await create_tables()
@@ -259,16 +263,16 @@ async def main(years: list[int], include_laps: bool = False) -> None:
     # Construir caches após carregar globais
     async with AsyncSessionLocal() as session:
         await _build_lookup_caches(session)
-    print("  [OK] FK lookup caches built.")
+    logger.info("  [OK] FK lookup caches built.")
 
     # Step 2: Year-specific data / Dados específicos por ano
     for year in years:
         await run_year_pipeline(year, include_laps=include_laps)
 
     elapsed = time.time() - start_time
-    print(f"\n{'=' * 60}")
-    print(f"ETL Pipeline completed in {elapsed:.1f}s")
-    print(f"{'=' * 60}")
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"ETL Pipeline completed in {elapsed:.1f}s")
+    logger.info(f"{'=' * 60}")
 
 
 def parse_args():
@@ -301,6 +305,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    configure_logging()
     args = parse_args()
     year_list = [int(y.strip()) for y in args.years.split(",")]
     asyncio.run(main(year_list, include_laps=args.include_laps))

@@ -17,6 +17,8 @@ existentes são ignorados com base em chaves naturais.
 Author: Bruno Krieger
 """
 
+import logging
+
 from sqlalchemy import select
 from src.db.database import AsyncSessionLocal, Base, engine
 from src.db.models import (
@@ -34,6 +36,8 @@ from src.db.models import (
     SprintResult,
     Status,
 )
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Lookup Caches / Caches de Lookup
@@ -106,7 +110,7 @@ async def create_tables() -> None:
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print("  [OK] Database tables created/verified.")
+    logger.info("  [OK] Database tables created/verified.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -135,7 +139,7 @@ async def load_seasons(seasons_data: list[dict]) -> int:
                 session.add(Season(**data))
                 count += 1
         await session.commit()
-    print(f"  [OK] Seasons: {count} new, {len(seasons_data) - count} existing.")
+    logger.info(f"  [OK] Seasons: {count} new, {len(seasons_data) - count} existing.")
     return count
 
 
@@ -160,7 +164,7 @@ async def load_statuses(statuses_data: list[dict]) -> int:
                 session.add(Status(**data))
                 count += 1
         await session.commit()
-    print(f"  [OK] Statuses: {count} new, {len(statuses_data) - count} existing.")
+    logger.info(f"  [OK] Statuses: {count} new, {len(statuses_data) - count} existing.")
     return count
 
 
@@ -196,7 +200,7 @@ async def load_circuits(circuits_data: list[dict]) -> int:
             else:
                 _circuit_cache[ref] = existing.id
         await session.commit()
-    print(f"  [OK] Circuits: {count} new, {len(circuits_data) - count} existing.")
+    logger.info(f"  [OK] Circuits: {count} new, {len(circuits_data) - count} existing.")
     return count
 
 
@@ -232,7 +236,7 @@ async def load_drivers(drivers_data: list[dict]) -> int:
             else:
                 _driver_cache[ref] = existing.id
         await session.commit()
-    print(f"  [OK] Drivers: {count} new, {len(drivers_data) - count} existing.")
+    logger.info(f"  [OK] Drivers: {count} new, {len(drivers_data) - count} existing.")
     return count
 
 
@@ -268,7 +272,7 @@ async def load_constructors(constructors_data: list[dict]) -> int:
             else:
                 _constructor_cache[ref] = existing.id
         await session.commit()
-    print(
+    logger.info(
         f"  [OK] Constructors: {count} new, {len(constructors_data) - count} existing."
     )
     return count
@@ -315,7 +319,7 @@ async def load_races(races_data: list[dict]) -> int:
             else:
                 _race_cache[key] = existing.id
         await session.commit()
-    print(f"  [OK] Races: {count} new, {len(races_data) - count} existing.")
+    logger.info(f"  [OK] Races: {count} new, {len(races_data) - count} existing.")
     return count
 
 
@@ -491,7 +495,7 @@ async def load_driver_standings(
                 session.add(DriverStanding(**data))
                 count += 1
         await session.commit()
-    print(f"  [OK] Driver Standings: {count} new.")
+    logger.info(f"  [OK] Driver Standings: {count} new.")
     return count
 
 
@@ -538,7 +542,7 @@ async def load_constructor_standings(
                 session.add(ConstructorStanding(**data))
                 count += 1
         await session.commit()
-    print(f"  [OK] Constructor Standings: {count} new.")
+    logger.info(f"  [OK] Constructor Standings: {count} new.")
     return count
 
 

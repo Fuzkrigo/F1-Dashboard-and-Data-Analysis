@@ -19,7 +19,7 @@ Author: Bruno Krieger
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Circuit Schemas
@@ -57,8 +57,7 @@ class Circuit(CircuitBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -98,8 +97,7 @@ class Driver(DriverBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -135,8 +133,7 @@ class Constructor(ConstructorBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -163,19 +160,6 @@ class RaceBase(BaseModel):
     date: date
 
 
-class RaceCreate(RaceBase):
-    """
-    Schema for creating a new race record.
-
-    [EN] Inherits all fields from RaceBase. No id required.
-    [PT-BR] Herda todos os campos de RaceBase. Sem id necessário.
-
-    Author: Bruno Krieger
-    """
-
-    pass
-
-
 class Race(RaceBase):
     """
     Schema for reading a race from the database.
@@ -188,8 +172,7 @@ class Race(RaceBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -233,41 +216,7 @@ class RaceResult(RaceResultBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
-
-
-class RaceResultWithNames(BaseModel):
-    """
-    Schema for reading a race result with driver and constructor names.
-
-    [EN] Enriched race result that includes driver name and constructor
-    name instead of just foreign key IDs. Used for dashboard-friendly
-    API responses.
-
-    [PT-BR] Resultado de corrida enriquecido que inclui nome do piloto e
-    nome do construtor ao invés de apenas IDs de chave estrangeira.
-    Usado para respostas da API amigáveis ao dashboard.
-
-    Author: Bruno Krieger
-    """
-
-    id: int
-    grid: int
-    position: Optional[int] = None
-    position_text: str
-    points: float
-    laps: int
-    time_result: Optional[str] = None
-    fastest_lap_time: Optional[str] = None
-    fastest_lap_speed: Optional[float] = None
-    status: str
-    driver_code: Optional[str] = None
-    driver_name: str
-    constructor_name: str
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -306,8 +255,7 @@ class QualifyingResult(QualifyingResultBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -344,8 +292,7 @@ class DriverStanding(DriverStandingBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -382,8 +329,7 @@ class ConstructorStanding(ConstructorStandingBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -422,8 +368,7 @@ class PitStop(PitStopBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -457,8 +402,7 @@ class Season(SeasonBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -501,8 +445,7 @@ class SprintResult(SprintResultBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -540,8 +483,7 @@ class LapTime(LapTimeBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -575,5 +517,4 @@ class Status(StatusBase):
 
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

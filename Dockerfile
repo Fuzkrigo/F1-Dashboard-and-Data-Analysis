@@ -1,5 +1,5 @@
 # Base image
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -23,7 +23,6 @@ COPY . .
 
 # Expose ports (Documentary only, compose handles mapping)
 EXPOSE 8000
-EXPOSE 8501
 
 # Default command (overridden in docker-compose)
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
