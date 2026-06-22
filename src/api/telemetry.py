@@ -12,12 +12,15 @@ para multiplos pilotos simultaneamente.
 Author: Bruno Krieger
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import fastf1
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 
 # Configure FastF1 caching (CRITICAL for performance)
 CACHE_DIR = Path(__file__).parent.parent.parent / ".cache_fastf1"
@@ -64,12 +67,12 @@ async def get_telemetry(
             try:
                 drv_laps = laps.pick_driver(driver_code)
                 if drv_laps.empty:
-                    print(f"No laps found for driver {driver_code}")
+                    logger.warning(f"No laps found for driver {driver_code}")
                     continue
 
                 drv_fastest = drv_laps.pick_fastest()
                 if pd.isna(drv_fastest["LapTime"]):
-                    print(f"No valid fastest lap for {driver_code}")
+                    logger.warning(f"No valid fastest lap for {driver_code}")
                     continue
 
                 drv_laps_clean = drv_laps[pd.notna(drv_laps["LapTime"])]
@@ -102,7 +105,7 @@ async def get_telemetry(
                     }
 
             except Exception as e_driver:
-                print(f"Error parsing driver {driver_code}: {e_driver}")
+                logger.warning(f"Error parsing driver {driver_code}: {e_driver}")
                 continue
 
         if not response_data["drivers"]:
@@ -120,6 +123,7 @@ async def get_telemetry(
     except KeyError as e:
         raise HTTPException(status_code=400, detail=f"FastF1 data error: {str(e)}")
     except Exception as e:
+        logger.exception("Unexpected error in telemetry endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -191,4 +195,5 @@ async def get_lap_telemetry(
     except KeyError as e:
         raise HTTPException(status_code=400, detail=f"FastF1 data error: {str(e)}")
     except Exception as e:
+        logger.exception("Unexpected error in telemetry endpoint")
         raise HTTPException(status_code=500, detail=str(e))

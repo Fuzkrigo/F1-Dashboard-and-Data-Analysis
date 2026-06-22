@@ -14,6 +14,7 @@ modelos ORM e um gerador de sessão pronto para injeção de dependência.
 Author: Bruno Krieger
 """
 
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -22,12 +23,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 # Check if we should use SQLite (default for local non-docker execution)
 USE_SQLITE = os.getenv("USE_SQLITE", "True").lower() == "true"
 
 if USE_SQLITE:
     DATABASE_URL = "sqlite+aiosqlite:///./f1_insights.db"
-    print("Using SQLite database")
+    logger.info("Using SQLite database")
 else:
     POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
@@ -35,7 +38,7 @@ else:
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "5432")
     DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{DB_HOST}:{DB_PORT}/{POSTGRES_DB}"
-    print(f"Using PostgreSQL database at {DB_HOST}:{DB_PORT}")
+    logger.info(f"Using PostgreSQL database at {DB_HOST}:{DB_PORT}")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 
