@@ -297,7 +297,9 @@ async def get_race(race_id: int, db: AsyncSession = Depends(get_db)):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@router.get("/results/", response_model=list[schemas.RaceResult], tags=["Results"])
+@router.get(
+    "/results/", response_model=list[schemas.RaceResultEnriched], tags=["Results"]
+)
 async def list_results(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -307,25 +309,52 @@ async def list_results(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List race results with optional filters.
+    List race results (enriched) with optional filters.
 
-    [EN] Returns a paginated list of race results. Can be filtered by
-    season (via join on Race), by specific race, or by specific driver.
-    [PT-BR] Retorna uma lista paginada de resultados. Pode ser filtrada
-    por temporada, corrida ou piloto.
+    [EN] Returns a paginated list of race results already including driver name,
+    code and constructor name (via JOIN), so the dashboard avoids one request per
+    driver/constructor. Can be filtered by season, race, or driver.
+    [PT-BR] Retorna uma lista paginada de resultados já incluindo nome e código
+    do piloto e nome do construtor (via JOIN), evitando uma requisição por
+    piloto/construtor. Pode ser filtrada por temporada, corrida ou piloto.
 
     Author: Bruno Krieger
     """
-    stmt = select(RaceResult).order_by(RaceResult.race_id, RaceResult.position)
+    stmt = (
+        select(
+            RaceResult,
+            Driver.first_name,
+            Driver.last_name,
+            Driver.code,
+            Constructor.constructor_name,
+        )
+        .join(Driver, RaceResult.driver_id == Driver.id)
+        .outerjoin(Constructor, RaceResult.constructor_id == Constructor.id)
+        .order_by(RaceResult.race_id, RaceResult.position)
+    )
     if season:
-        stmt = stmt.join(Race).where(Race.season == season)
+        stmt = stmt.join(Race, RaceResult.race_id == Race.id).where(
+            Race.season == season
+        )
     if race_id:
         stmt = stmt.where(RaceResult.race_id == race_id)
     if driver_id:
         stmt = stmt.where(RaceResult.driver_id == driver_id)
     stmt = stmt.offset(skip).limit(limit)
+
     result = await db.execute(stmt)
-    return result.scalars().all()
+    results = []
+    for race_result, first, last, code, team in result.all():
+        item = schemas.RaceResult.model_validate(race_result).model_dump()
+        item.update(
+            {
+                "driver_name": f"{first} {last}",
+                "driver_code": code,
+                "constructor_name": team,
+            }
+        )
+        results.append(item)
+    return results
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -407,7 +436,7 @@ async def list_sprint_results(
 
 @router.get(
     "/standings/drivers/",
-    response_model=list[schemas.DriverStanding],
+    response_model=list[schemas.DriverStandingEnriched],
     tags=["Standings"],
 )
 async def list_driver_standings(
@@ -415,24 +444,61 @@ async def list_driver_standings(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List driver championship standings.
+    List driver championship standings (enriched).
 
-    [EN] Returns driver standings, optionally filtered by season.
-    [PT-BR] Retorna a classificação de pilotos, opcionalmente filtrada
-    por temporada.
+    [EN] Returns driver standings already including the driver's name, code,
+    number, nationality and team name (the constructor from the standing's race),
+    so the dashboard does not need one extra request per driver.
+    [PT-BR] Retorna a classificação de pilotos já incluindo nome, código, número,
+    nacionalidade e nome da equipe (o construtor da corrida do standing), evitando
+    uma requisição extra por piloto.
 
     Author: Bruno Krieger
     """
-    stmt = select(DriverStanding).order_by(DriverStanding.position)
+    stmt = (
+        select(
+            DriverStanding,
+            Driver.first_name,
+            Driver.last_name,
+            Driver.code,
+            Driver.permanent_number,
+            Driver.nationality,
+            Constructor.constructor_name,
+        )
+        .join(Driver, DriverStanding.driver_id == Driver.id)
+        .outerjoin(
+            RaceResult,
+            (RaceResult.driver_id == DriverStanding.driver_id)
+            & (RaceResult.race_id == DriverStanding.race_id),
+        )
+        .outerjoin(Constructor, RaceResult.constructor_id == Constructor.id)
+        .order_by(DriverStanding.position)
+    )
     if season:
-        stmt = stmt.join(Race).where(Race.season == season)
+        stmt = stmt.join(Race, DriverStanding.race_id == Race.id).where(
+            Race.season == season
+        )
+
     result = await db.execute(stmt)
-    return result.scalars().all()
+    standings = []
+    for standing, first, last, code, number, nationality, team in result.all():
+        item = schemas.DriverStanding.model_validate(standing).model_dump()
+        item.update(
+            {
+                "driver_name": f"{first} {last}",
+                "driver_code": code,
+                "permanent_number": number,
+                "nationality": nationality,
+                "constructor_name": team,
+            }
+        )
+        standings.append(item)
+    return standings
 
 
 @router.get(
     "/standings/constructors/",
-    response_model=list[schemas.ConstructorStanding],
+    response_model=list[schemas.ConstructorStandingEnriched],
     tags=["Standings"],
 )
 async def list_constructor_standings(
@@ -440,19 +506,36 @@ async def list_constructor_standings(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    List constructor championship standings.
+    List constructor championship standings (enriched).
 
-    [EN] Returns constructor standings, optionally filtered by season.
-    [PT-BR] Retorna a classificação de construtores, opcionalmente filtrada
-    por temporada.
+    [EN] Returns constructor standings already including the constructor name and
+    nationality (via JOIN), so the dashboard avoids one request per constructor.
+    [PT-BR] Retorna a classificação de construtores já incluindo o nome e a
+    nacionalidade do construtor (via JOIN), evitando uma requisição por construtor.
 
     Author: Bruno Krieger
     """
-    stmt = select(ConstructorStanding).order_by(ConstructorStanding.position)
+    stmt = (
+        select(
+            ConstructorStanding,
+            Constructor.constructor_name,
+            Constructor.nationality,
+        )
+        .join(Constructor, ConstructorStanding.constructor_id == Constructor.id)
+        .order_by(ConstructorStanding.position)
+    )
     if season:
-        stmt = stmt.join(Race).where(Race.season == season)
+        stmt = stmt.join(Race, ConstructorStanding.race_id == Race.id).where(
+            Race.season == season
+        )
+
     result = await db.execute(stmt)
-    return result.scalars().all()
+    standings = []
+    for standing, name, nationality in result.all():
+        item = schemas.ConstructorStanding.model_validate(standing).model_dump()
+        item.update({"constructor_name": name, "nationality": nationality})
+        standings.append(item)
+    return standings
 
 
 # ─────────────────────────────────────────────────────────────────────────────

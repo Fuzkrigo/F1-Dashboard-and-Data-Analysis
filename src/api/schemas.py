@@ -518,3 +518,52 @@ class Status(StatusBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Enriched Schemas (anti N+1) — carregam nomes relacionados inline
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class DriverStandingEnriched(DriverStanding):
+    """
+    Driver standing enriched with driver and team names.
+
+    [EN] Extends DriverStanding with the driver's name/code/number, nationality
+    and team name (from the standing's race), so the dashboard avoids one extra
+    request per driver.
+    [PT-BR] Estende DriverStanding com nome/código/número do piloto,
+    nacionalidade e nome da equipe (da corrida do standing), evitando uma
+    requisição extra por piloto.
+
+    Author: Bruno Krieger
+    """
+
+    driver_name: str
+    driver_code: Optional[str] = None
+    permanent_number: Optional[int] = None
+    nationality: str
+    constructor_name: Optional[str] = None
+
+
+class ConstructorStandingEnriched(ConstructorStanding):
+    """
+    Constructor standing enriched with the constructor name and nationality.
+
+    Author: Bruno Krieger
+    """
+
+    constructor_name: str
+    nationality: str
+
+
+class RaceResultEnriched(RaceResult):
+    """
+    Race result enriched with driver and constructor names.
+
+    Author: Bruno Krieger
+    """
+
+    driver_name: str
+    driver_code: Optional[str] = None
+    constructor_name: Optional[str] = None

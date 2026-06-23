@@ -164,6 +164,18 @@ async def async_client():
                     laps=57,
                     status="Finished",
                 ),
+                # Ham result in race2 (2021): lets driver standings expose his team
+                RaceResult(
+                    race_id=race2.id,
+                    driver_id=ham.id,
+                    constructor_id=ferrari.id,
+                    grid=2,
+                    position=2,
+                    position_text="2",
+                    points=18.0,
+                    laps=56,
+                    status="Finished",
+                ),
                 QualifyingResult(
                     race_id=race1.id,
                     driver_id=ver.id,
@@ -519,3 +531,49 @@ async def test_list_statuses(async_client):
     response = await async_client.get("/api/v1/statuses/?limit=10")
     assert response.status_code == 200
     assert len(response.json()) == 2
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Enriched endpoints (anti N+1): standings and results carry names/team inline
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_driver_standings_enriched(async_client):
+    """Driver standings include driver name/code/number and team name inline."""
+    resp = await async_client.get("/api/v1/standings/drivers/?season=2021")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    s = data[0]
+    assert s["driver_name"] == "Lewis Hamilton"
+    assert s["driver_code"] == "HAM"
+    assert s["permanent_number"] == 44
+    assert s["nationality"] == "British"
+    assert s["constructor_name"] == "Ferrari"
+
+
+@pytest.mark.asyncio
+async def test_constructor_standings_enriched(async_client):
+    """Constructor standings include the constructor name inline."""
+    resp = await async_client.get("/api/v1/standings/constructors/?season=2021")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["constructor_name"] == "Red Bull"
+    assert data[0]["nationality"] == "Austrian"
+
+
+@pytest.mark.asyncio
+async def test_results_enriched(async_client):
+    """Race results include driver and constructor names inline."""
+    races = (await async_client.get("/api/v1/races/?season=2023")).json()
+    race_id = races[0]["id"]
+    resp = await async_client.get(f"/api/v1/results/?race_id={race_id}&limit=5")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    r = data[0]
+    assert r["driver_name"] == "Max Verstappen"
+    assert r["driver_code"] == "VER"
+    assert r["constructor_name"] == "Red Bull"
