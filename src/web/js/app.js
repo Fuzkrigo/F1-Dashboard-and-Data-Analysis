@@ -9,6 +9,10 @@
  *
  * Author: Bruno Krieger
  */
+import { getTeamColor } from './lib/teamColors.js';
+import { escapeHTML, formatLapTime, clampDec } from './lib/format.js';
+import { calcStats } from './lib/stats.js';
+
 const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
 // DOM Elements
@@ -37,53 +41,9 @@ const viewMeta = {
 };
 
 // ============================================================================
-// Security & Styling Dictionaries
+// getTeamColor e escapeHTML movidos para ./lib/teamColors.js e ./lib/format.js
+// (importados no topo deste arquivo).
 // ============================================================================
-/**
- * [EN] F1 Team Colors Mapping.
- * [PT-BR] Mapeamento de Cores Oficiais das Equipes da F1.
- */
-const TEAM_COLORS_MAP = {
-    'red bull': '#3671C6',
-    'ferrari': '#F91536',
-    'mercedes': '#6CD3BF',
-    'mclaren': '#FF8000',
-    'aston martin': '#229971',
-    'alpine': '#0090FF',
-    'williams': '#37BEDD',
-    'rb': '#6692FF',
-    'alphatauri': '#2B4562',
-    'sauber': '#52E252',
-    'alfa romeo': '#900000',
-    'haas': '#B6BABD',
-    'renault': '#FFF500',
-    'racing point': '#F596C8'
-};
-
-function getTeamColor(teamName) {
-    if (!teamName) return '#00F0FF'; // default cyan
-    let name = String(teamName).toLowerCase();
-    for (let key in TEAM_COLORS_MAP) {
-        if (name.includes(key)) return TEAM_COLORS_MAP[key];
-    }
-    return '#00F0FF';
-}
-// ============================================================================
-// ============================================================================
-/**
- * [EN] Sanitizes input to prevent Cross-Site Scripting (XSS).
- * [PT-BR] Higieniza entradas para evitar Cross-Site Scripting (XSS).
- * @param {string} str - String to escape / String a ser escapada.
- */
-function escapeHTML(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
 
 // ============================================================================
 // Custom Global Tooltip Engine (F1 Engine Unified Replacement)
@@ -640,15 +600,7 @@ async function loadTelemetry(season) {
                 // Arrays p/ os Traces dos gráficos que serão preenchidos
                 const tracesLap = [];
 
-                // Re-utilizar Funções Helper
-                const formatLapTime = (sec) => {
-                    if (!sec) return "";
-                    const m = Math.floor(sec / 60);
-                    const s = (sec % 60).toFixed(3).padStart(6, '0');
-                    return `${m}:${s}`;
-                };
-
-                const clampDec = (arr) => arr ? arr.map(v => typeof v === 'number' ? Number(v.toFixed(3)) : v) : [];
+                // formatLapTime e clampDec importados de ./lib/format.js
 
                 // Iterar Linearmente sobre a resposta N-pilotos da API
                 Object.values(data.drivers).forEach((driverData) => {
@@ -955,7 +907,6 @@ async function fetchAndPlotSelectedLaps() {
     detailEl.style.display = 'block';
 
     const ctx = window._telemetryContext;
-    const clampDec = (arr) => arr ? arr.map(v => typeof v === 'number' ? Number(v.toFixed(3)) : v) : [];
 
     const buildTrace = (xData, yData, name, color, yaxisIdx, unit = '') => ({
         x: clampDec(xData),
@@ -1307,22 +1258,7 @@ async function loadH2H(season) {
             Plotly.newPlot('h2h-chart', [trace1, trace2], layout, {displayModeBar: false, responsive: true});
             bindCustomTooltip('h2h-chart', 'x', (x) => x, (val) => isPoints ? val + ' pts' : val + 'º');
 
-            // 2) Calculating Stats
-            const calcStats = (rList) => {
-                const pts = rList.reduce((acc, r) => acc + (r.points || 0), 0);
-                const wins = rList.filter(r => r.position === 1).length;
-                const pods = rList.filter(r => r.position > 0 && r.position <= 3).length;
-
-                // DNF (Did Not Finish): Equivalente ao is_na (nulo) no script original Python
-                const dnfs = rList.filter(r => r.position == null).length;
-
-                const validPos = rList.filter(r => r.position > 0);
-                const avgPos = validPos.length > 0 ? (validPos.reduce((acc, r) => acc + r.position, 0) / validPos.length).toFixed(1) : 0;
-
-                const racesD = rList.length;
-
-                return { pts, wins, pods, dnfs, avgPos, racesD };
-            };
+            // 2) Calculating Stats — calcStats importado de ./lib/stats.js
 
             const s1 = calcStats(res1);
             const s2 = calcStats(res2);
