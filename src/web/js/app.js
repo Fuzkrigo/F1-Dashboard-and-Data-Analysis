@@ -9,11 +9,10 @@
  *
  * Author: Bruno Krieger
  */
+import { API_BASE } from './config.js';
 import { getTeamColor } from './lib/teamColors.js';
 import { escapeHTML, formatLapTime, clampDec } from './lib/format.js';
 import { calcStats } from './lib/stats.js';
-
-const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
 // DOM Elements
 const seasonSelect = document.getElementById('season-select');
@@ -337,22 +336,21 @@ async function loadOverview(season) {
         const driverSt = await fetchAPI(`/standings/drivers/?season=${season}`);
         const constructorSt = await fetchAPI(`/standings/constructors/?season=${season}`);
 
-        // Update Driver Leader KPI
+        // Update Driver Leader KPI (nome/codigo ja vem no standing enriquecido)
         if (driverSt.length > 0) {
             const leaderD = driverSt[0];
-            const leaderData = await fetchAPI(`/drivers/${leaderD.driver_id}`);
-            document.getElementById('kpi-driver-leader').textContent = escapeHTML(`${leaderData.code || leaderData.last_name}`).toUpperCase();
+            const leaderLabel = leaderD.driver_code || leaderD.driver_name || '';
+            document.getElementById('kpi-driver-leader').textContent = escapeHTML(leaderLabel).toUpperCase();
             document.getElementById('kpi-driver-points').textContent = `${leaderD.points} pts`;
         } else {
             document.getElementById('kpi-driver-leader').textContent = "--";
             document.getElementById('kpi-driver-points').textContent = "-- pts";
         }
 
-        // Update Constructor Leader KPI
+        // Update Constructor Leader KPI (constructor_name ja vem no standing enriquecido)
         if (constructorSt.length > 0) {
             const leaderC = constructorSt[0];
-            const teamData = await fetchAPI(`/constructors/${leaderC.constructor_id}`);
-            document.getElementById('kpi-team-leader').textContent = escapeHTML(`${teamData.constructor_name}`).toUpperCase();
+            document.getElementById('kpi-team-leader').textContent = escapeHTML(leaderC.constructor_name || '').toUpperCase();
             document.getElementById('kpi-team-points').textContent = `${leaderC.points} pts`;
         } else {
             document.getElementById('kpi-team-leader').textContent = "--";
@@ -361,28 +359,12 @@ async function loadOverview(season) {
 
         // Plotly Charts - All Drivers
         if (driverSt.length > 0) {
-            // Need to fetch drivers details and their teams
-            await Promise.all(driverSt.map(async (st) => {
-                const driverData = await fetchAPI(`/drivers/${st.driver_id}`);
-                const permNum = driverData.permanent_number ? ` - ${driverData.permanent_number}` : '';
-                const rawName = `${driverData.first_name} ${driverData.last_name}${permNum}`;
-                st.driverName = escapeHTML(rawName);
-
-                // Mapear Cores através dos Resultados (fallback se não tiver constructor ID vinculado)
-                // A API de F1 geralmente atrela driver_id ao constructor_id nos resultados por corrida.
-                // Mas, uma busca rápida é pegar a última corrida do piloto na temporada e ver a qual equipe ele estava.
-                try {
-                    const drvRes = await fetchAPI(`/results/?season=${season}&driver_id=${st.driver_id}&limit=1`);
-                    if (drvRes && drvRes.length > 0 && drvRes[0].constructor_id) {
-                        const drvTeam = await fetchAPI(`/constructors/${drvRes[0].constructor_id}`);
-                        st.teamColor = getTeamColor(drvTeam.constructor_name);
-                    } else {
-                        st.teamColor = '#00F0FF';
-                    }
-                } catch(err) {
-                    st.teamColor = '#00F0FF';
-                }
-            }));
+            // Nome e equipe ja vem no standing enriquecido -> sem requisicao por piloto
+            driverSt.forEach((st) => {
+                const permNum = st.permanent_number ? ` - ${st.permanent_number}` : '';
+                st.driverName = escapeHTML(`${st.driver_name}${permNum}`);
+                st.teamColor = getTeamColor(st.constructor_name);
+            });
 
             // Note: Não aplicaremos sort() alfabético aqui, manteremos a ordem natural do campeonato vinda da API (Ranked)
 
@@ -420,10 +402,10 @@ async function loadOverview(season) {
 
         // Plotly Charts - Teams
         if (constructorSt.length > 0) {
-            await Promise.all(constructorSt.map(async (st) => {
-                const teamData = await fetchAPI(`/constructors/${st.constructor_id}`);
-                st.teamName = escapeHTML(teamData.constructor_name);
-            }));
+            // constructor_name ja vem inline -> sem requisicao por equipe
+            constructorSt.forEach((st) => {
+                st.teamName = escapeHTML(st.constructor_name || '');
+            });
 
             const maxTeamsPoints = constructorSt.length > 0 ? Math.max(...constructorSt.map(c => c.points)) : 100;
 
@@ -503,9 +485,8 @@ async function loadTelemetry(season) {
         // Popular options
         await Promise.all(listDrivers.map(async (s) => {
             try {
-                const d = await fetchAPI(`/drivers/${s.driver_id}`);
-                // fallback to driver_ref or slicing last_name if code is missing
-                const code3 = d.code || (d.driver_ref ? d.driver_ref.substring(0,3).toUpperCase() : d.last_name.substring(0,3).toUpperCase());
+                // driver_code e driver_name ja vem no standing enriquecido -> sem requisicao por piloto
+                const code3 = s.driver_code || (s.driver_name ? s.driver_name.substring(0, 3).toUpperCase() : 'N/A');
 
                 // HTML Baseado em Label/Checkbox escondido p/ toggle visual puro (Sci-fi)
                 s.optionHTML = `
@@ -523,7 +504,7 @@ async function loadTelemetry(season) {
                         transition: all 0.2s;
                         user-select: none;
                     ">
-                        <input type="checkbox" value="${code3}" data-name="${d.first_name} ${d.last_name}" data-team="${s.Constructors ? s.Constructors[0].constructor_id : ''}" style="display: none;" onchange="
+                        <input type="checkbox" value="${code3}" data-name="${s.driver_name}" data-team="" style="display: none;" onchange="
                            if(this.checked) {
                                this.parentElement.style.background = 'rgba(0, 240, 255, 0.2)';
                                this.parentElement.style.borderColor = 'var(--accent-cyan)';
@@ -539,7 +520,7 @@ async function loadTelemetry(season) {
                         ${code3}
                     </label>
                 `;
-                s.sortName = d.first_name + " " + d.last_name;
+                s.sortName = s.driver_name || 'ZZZ';
             } catch (err) {
                 console.error("Error fetching driver:", s.driver_id, err);
                 s.optionHTML = '';
@@ -1019,8 +1000,7 @@ async function loadEvolution(season) {
             if (!isDrivers) {
                 const constructors = await fetchAPI(`/standings/constructors/?season=${season}`);
                 for (let c of constructors) {
-                    const teamData = await fetchAPI(`/constructors/${c.constructor_id}`);
-                    const teamName = teamData.constructor_name;
+                    const teamName = c.constructor_name; // ja vem no standing enriquecido
 
                     let cumulative = 0;
                     const yData = raceIds.map(rid => {
@@ -1044,18 +1024,14 @@ async function loadEvolution(season) {
                 const topDrivers = driversStd; // Carrega TODOS os drivers conforme solicitação
 
                 for (let d of topDrivers) {
-                    const driverData = await fetchAPI(`/drivers/${d.driver_id}`);
-                    const permNum = driverData.permanent_number ? ` - ${driverData.permanent_number}` : '';
-                    const driverName = `${driverData.first_name} ${driverData.last_name}${permNum}`;
+                    const permNum = d.permanent_number ? ` - ${d.permanent_number}` : '';
+                    const driverName = `${d.driver_name}${permNum}`; // ja vem no standing enriquecido
 
                     // Guardamos também na variável loop temporária para ordenar tudo por A-Z mais tarde
                     d.fullName = driverName;
                     const dRes = allResults.find(res => res.driver_id === d.driver_id);
-                    let teamColor = '#ccc';
-                    if (dRes) {
-                        const teamData = await fetchAPI(`/constructors/${dRes.constructor_id}`);
-                        teamColor = getTeamColor(teamData.constructor_name);
-                    }
+                    // constructor_name ja vem no result enriquecido
+                    const teamColor = dRes ? getTeamColor(dRes.constructor_name) : '#ccc';
 
                     let cumulative = 0;
                     const yData = raceIds.map(rid => {
@@ -1134,14 +1110,13 @@ async function loadH2H(season) {
         d2Select.innerHTML = '<option value="" disabled selected>Piloto 2</option>';
 
         // Coletar dados detalhados para exibição textual (Nome + Número)
-        const driverOptions = await Promise.all(drivers.map(async (row) => {
-            const d = await fetchAPI(`/drivers/${row.driver_id}`);
-            const permNum = d.permanent_number ? ` - ${d.permanent_number}` : '';
+        const driverOptions = drivers.map((row) => {
+            const permNum = row.permanent_number ? ` - ${row.permanent_number}` : '';
             return {
                 id: row.driver_id,
-                name: escapeHTML(`${d.first_name} ${d.last_name}${permNum}`)
+                name: escapeHTML(`${row.driver_name}${permNum}`) // ja vem no standing enriquecido
             };
-        }));
+        });
 
         // Ordernar alfabeticamente o dropdown
         driverOptions.sort((a, b) => a.name.localeCompare(b.name));
@@ -1183,17 +1158,14 @@ async function loadH2H(season) {
                 });
             };
 
-            const fetchTeamColorForDriver = async (resultsList) => {
-                const firstValidResult = resultsList.find(r => r.constructor_id);
-                if (firstValidResult) {
-                    const teamData = await fetchAPI(`/constructors/${firstValidResult.constructor_id}`);
-                    return getTeamColor(teamData.constructor_name);
-                }
-                return '#ccc';
+            const teamColorForDriver = (resultsList) => {
+                // constructor_name ja vem no result enriquecido
+                const firstValidResult = resultsList.find(r => r.constructor_name);
+                return firstValidResult ? getTeamColor(firstValidResult.constructor_name) : '#ccc';
             };
 
-            const color1 = await fetchTeamColorForDriver(res1);
-            const color2 = await fetchTeamColorForDriver(res2);
+            const color1 = teamColorForDriver(res1);
+            const color2 = teamColorForDriver(res2);
 
             const n1 = d1Select.options[d1Select.selectedIndex].text;
             const n2 = d2Select.options[d2Select.selectedIndex].text;
@@ -1400,29 +1372,26 @@ async function loadPits(season) {
                 return;
             }
 
-            // Build Drivers Info Lookup
+            // Build Drivers Info Lookup a partir dos results enriquecidos (nome + equipe inline)
             const driverMap = {}; // driver_id -> { name, team }
-
-            // Map team from results
-            const teamMap = {}; // driver_id -> teamName
-            for(let res of resultsData) {
-                if(res.constructor_id) {
-                    const cData = await fetchAPI(`/constructors/${res.constructor_id}`);
-                    teamMap[res.driver_id] = cData.constructor_name;
+            for (let res of resultsData) {
+                if (!driverMap[res.driver_id]) {
+                    driverMap[res.driver_id] = {
+                        name: escapeHTML(res.driver_name || 'Desconhecido'),
+                        team: res.constructor_name || 'Desconhecido'
+                    };
                 }
             }
 
-            // Populate unique drivers from pits
+            // Unique drivers from pits
             const pitDriversIds = [...new Set(pitsData.map(p => p.driver_id))];
 
-            await Promise.all(pitDriversIds.map(async (did) => {
-                const dData = await fetchAPI(`/drivers/${did}`);
-                const permNum = dData.permanent_number ? ` - ${dData.permanent_number}` : '';
-                driverMap[did] = {
-                    name: escapeHTML(`${dData.first_name} ${dData.last_name}${permNum}`),
-                    team: teamMap[did] || 'Desconhecido'
-                };
-            }));
+            // Fallback para pilotos presentes nos pits mas ausentes nos resultados
+            pitDriversIds.forEach((did) => {
+                if (!driverMap[did]) {
+                    driverMap[did] = { name: `Piloto ${did}`, team: 'Desconhecido' };
+                }
+            });
 
             // Structure data for Plotly
             let driverStats = [];
@@ -1617,27 +1586,10 @@ async function loadGrid(season) {
 
             let valid = results.filter(r => parseInt(r.grid) > 0 && parseInt(r.position) > 0);
 
-            // Build Drivers and Constructors Dictionaries safely and locally
-            const driverMap = {};
-            const constructorMap = {};
-            const dIds = [...new Set(valid.map(r => r.driver_id))];
-            const cIds = [...new Set(valid.map(r => r.constructor_id))];
-
-            await Promise.all([
-                ...dIds.map(async id => {
-                    if (id) driverMap[id] = await fetchAPI(`/drivers/${id}`);
-                }),
-                ...cIds.map(async id => {
-                    if (id) constructorMap[id] = await fetchAPI(`/constructors/${id}`);
-                })
-            ]);
-
+            // Nome do piloto e equipe ja vem no result enriquecido -> sem N+1
             let chartData = valid.map(r => {
-                const driver = driverMap[r.driver_id];
-                const constructor = constructorMap[r.constructor_id];
-
-                const driverName = driver ? `${driver.first_name} ${driver.last_name}` : 'Desconhecido';
-                const teamName = constructor ? constructor.constructor_name : 'N/A';
+                const driverName = r.driver_name || 'Desconhecido';
+                const teamName = r.constructor_name || 'N/A';
 
                 return {
                     driverName: driverName,
@@ -1776,8 +1728,8 @@ async function loadHistory(season) {
         if (drv_standings.length > 0) {
             drv_standings.sort((a,b) => a.position - b.position);
             championData = drv_standings[0];
-            const champD = await fetchAPI(`/drivers/${championData.driver_id}`);
-            document.getElementById('history-champion-name').textContent = escapeHTML(`${champD.first_name} ${champD.last_name}`);
+            // driver_name ja vem no standing enriquecido
+            document.getElementById('history-champion-name').textContent = escapeHTML(championData.driver_name || '');
             document.getElementById('history-champion-points').textContent = `${championData.points} pts`;
         } else {
             document.getElementById('history-champion-name').textContent = "N/A";
@@ -1813,16 +1765,9 @@ async function loadHistory(season) {
         if (drv_standings.length > 0) {
             const stdTbody = document.getElementById('history-standings-table').querySelector('tbody');
 
-            // Fetch drivers dict for caching
-            const dIds = [...new Set(drv_standings.map(s => s.driver_id))];
-            const driverMap = {};
-            await Promise.all(dIds.map(async id => {
-                if (id) driverMap[id] = await fetchAPI(`/drivers/${id}`);
-            }));
-
+            // driver_name ja vem no standing enriquecido -> sem N+1
             drv_standings.forEach(s => {
-                const driver = driverMap[s.driver_id];
-                const driverName = driver ? `${driver.first_name} ${driver.last_name}` : 'Desconhecido';
+                const driverName = s.driver_name || 'Desconhecido';
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${s.position}</td>
@@ -1851,21 +1796,7 @@ async function loadHistory(season) {
                 return;
             }
 
-            const r_dIds = [...new Set(results.map(r => r.driver_id))];
-            const r_cIds = [...new Set(results.map(r => r.constructor_id))];
-
-            const rDriverMap = {};
-            const rConstructorMap = {};
-
-            await Promise.all([
-                ...r_dIds.map(async id => {
-                    if (id) rDriverMap[id] = await fetchAPI(`/drivers/${id}`);
-                }),
-                ...r_cIds.map(async id => {
-                    if (id) rConstructorMap[id] = await fetchAPI(`/constructors/${id}`);
-                })
-            ]);
-
+            // driver_name e constructor_name ja vem no result enriquecido -> sem N+1
             results.sort((a,b) => {
                 const aPos = parseInt(a.position) || 999;
                 const bPos = parseInt(b.position) || 999;
@@ -1880,10 +1811,8 @@ async function loadHistory(season) {
             const podiumColors = ['var(--accent-cyan)', '#C0C0C0', '#CD7F32'];
 
             top3.forEach((r, idx) => {
-                const d = rDriverMap[r.driver_id];
-                const c = rConstructorMap[r.constructor_id];
-                const dName = d ? `${d.first_name} ${d.last_name}` : 'N/A';
-                const cName = c ? c.constructor_name : 'N/A';
+                const dName = r.driver_name || 'N/A';
+                const cName = r.constructor_name || 'N/A';
                 const teamColor = getTeamColor(cName);
 
                 const card = document.createElement('div');
@@ -1902,10 +1831,8 @@ async function loadHistory(season) {
 
             // Build Results Table
             results.forEach(r => {
-                const d = rDriverMap[r.driver_id];
-                const c = rConstructorMap[r.constructor_id];
-                const dName = d ? `${d.first_name} ${d.last_name}` : 'N/A';
-                const cName = c ? c.constructor_name : 'N/A';
+                const dName = r.driver_name || 'N/A';
+                const cName = r.constructor_name || 'N/A';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
