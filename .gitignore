@@ -46,3 +46,9 @@ env/
 PLANEJAMENTO.md
 CHECKLIST.md
 PROXIMOS_PASSOS.md
+
+# Node / frontend tooling (Vitest + Playwright)
+node_modules/
+coverage/
+playwright-report/
+test-results/
