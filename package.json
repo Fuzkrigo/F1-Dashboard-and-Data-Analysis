@@ -1,0 +1,17 @@
+{
+  "name": "f1-insights-frontend",
+  "version": "1.0.0",
+  "description": "Testes do frontend (Vitest unit + Playwright E2E) do F1 Insights Engine",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.9"
+  }
+}
