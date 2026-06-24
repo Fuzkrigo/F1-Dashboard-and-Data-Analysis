@@ -1,44 +1,41 @@
 # =============================================================================
 # requirements.txt — F1 Insights Engine
 #
-# [EN] Python package dependencies for the F1 Insights Engine.
-# Includes packages for the API (FastAPI, Uvicorn), database (SQLAlchemy,
-# asyncpg, aiosqlite), telemetry (FastF1, pandas), data fetching (requests),
-# and configuration (python-dotenv, pydantic).
-# Versions are pinned to ensure reproducible builds and mitigate known
-# vulnerabilities in transitive dependencies.
+# [EN] Python runtime dependencies, pinned to exact versions for reproducible
+# builds (local == production). Test-only deps are NOT listed here. When a
+# version needs bumping, do it deliberately (Snyk/Dependabot) and re-test.
 #
-# [PT-BR] Dependências Python do F1 Insights Engine.
-# Inclui pacotes para a API (FastAPI, Uvicorn), banco de dados (SQLAlchemy,
-# asyncpg, aiosqlite), telemetria (FastF1, pandas), busca de dados (requests)
-# e configuração (python-dotenv, pydantic).
+# [PT-BR] Dependências de runtime do Python, fixadas em versões exatas para
+# builds reproduzíveis (local == produção). Dependências só de teste NÃO entram
+# aqui. Para subir uma versão, faça de forma deliberada (Snyk/Dependabot) e
+# re-teste.
 #
 # Author: Bruno Krieger
 # =============================================================================
 
 # --- API ---
-fastapi
-uvicorn
+fastapi==0.138.0
+uvicorn==0.49.0
 
 # --- Database ---
-sqlalchemy
-asyncpg
-aiosqlite
+sqlalchemy==2.0.51
+asyncpg==0.31.0
+aiosqlite==0.22.1
 
 # --- Telemetry (FastF1 live timing) ---
-fastf1
-pandas
+fastf1==3.8.3
+pandas==2.3.3
 
 # --- HTTP / Data Fetching ---
-requests>=2.32.5
+requests==2.34.2
 
 # --- Configuration & Validation ---
-python-dotenv
-pydantic
+python-dotenv==1.2.2
+pydantic==2.13.4
 
 # --- Pinned transitive dependencies (security) ---
-pillow>=12.1.1
-urllib3>=2.6.3
+pillow==12.2.0
+urllib3==2.7.0
 
 # =============================================================================
 # STARTUP COMMANDS / COMANDOS DE INICIALIZAÇÃO

@@ -1,0 +1,31 @@
+# =============================================================================
+# render.yaml — Render Blueprint (Infrastructure as Code) do F1 Insights Engine
+#
+# [EN] Declares the FastAPI backend as a Render web service so the platform can
+# provision it straight from the repository. Secrets (DATABASE_URL) are marked
+# `sync: false` — Render prompts for them in the dashboard and never stores them
+# in the repo.
+#
+# [PT-BR] Declara o backend FastAPI como um web service do Render para a
+# plataforma provisionar direto do repositório. Segredos (DATABASE_URL) são
+# marcados `sync: false` — o Render pede no painel e nunca os guarda no repo.
+#
+# Author: Bruno Krieger
+# =============================================================================
+services:
+  - type: web
+    name: f1-engine-api
+    runtime: python
+    plan: free
+    # [EN] Build/start. Render injects $PORT; we MUST bind to it.
+    # [PT-BR] Build/start. O Render injeta $PORT; é OBRIGATÓRIO escutar nela.
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.1"
+      # [EN] Supabase Session pooler URL. Set it in the dashboard (never commit).
+      # [PT-BR] URL do Session pooler do Supabase. Defina no painel (nunca commitar).
+      - key: DATABASE_URL
+        sync: false
