@@ -16,9 +16,9 @@
 
 const LOCAL_HOSTS = ['localhost', '127.0.0.1', ''];
 
-// [PT-BR] Substituir pela URL real da API no deploy (R5).
-// [EN] Replace with the real API URL on deploy (R5).
-const PRODUCTION_API_BASE = 'https://f1-insights-api.onrender.com/api/v1';
+// [PT-BR] URL de produção da API (FastAPI no Render, R5.1).
+// [EN] Production API URL (FastAPI on Render, R5.1).
+const PRODUCTION_API_BASE = 'https://f1-engine-api.onrender.com/api/v1';
 
 const isLocal = LOCAL_HOSTS.includes(window.location.hostname);
 
