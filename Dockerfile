@@ -24,5 +24,8 @@ COPY . .
 # Expose ports (Documentary only, compose handles mapping)
 EXPOSE 8000
 
-# Default command (overridden in docker-compose)
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command (overridden in docker-compose).
+# [EN] Shell form so $PORT (injected by PaaS like Render) is honored; falls back
+#      to 8000 locally. [PT-BR] Forma shell para respeitar $PORT (injetado por
+#      PaaS como o Render); cai para 8000 localmente.
+CMD uvicorn src.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
