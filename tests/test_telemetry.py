@@ -17,16 +17,39 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 from src.api.main import app
+from src.db.database import Base, get_db
 
 
 @pytest.fixture
 async def async_client():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        yield client
+    # In-memory DB (StaticPool = single shared connection) holding the cache
+    # table, overriding the API's get_db so the telemetry cache works in tests.
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    maker = async_sessionmaker(bind=engine, expire_on_commit=False)
+
+    async def _override_get_db():
+        async with maker() as db_session:
+            yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()
+        await engine.dispose()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -290,3 +313,43 @@ def test_sanitize_nan_handles_nat_and_nan():
     assert _sanitize_nan(float("nan")) is None
     assert _sanitize_nan(42) == 42
     assert _sanitize_nan("ok") == "ok"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cache behavior (R4) / Comportamento de cache (R4)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_telemetry_second_call_served_from_cache(async_client):
+    """Second identical request hits the cache: FastF1 is loaded only once."""
+    with patch("src.api.telemetry.fastf1.get_session") as mock_get_session:
+        mock_get_session.return_value = _build_session()
+        url = "/api/v1/telemetry/?year=2023&round_num=1&drivers=VER&session_type=R"
+
+        r1 = await async_client.get(url)
+        r2 = await async_client.get(url)
+
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        assert r1.json() == r2.json()
+        assert mock_get_session.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_lap_telemetry_second_call_served_from_cache(async_client):
+    """Second identical lap request hits the cache (FastF1 loaded once)."""
+    with patch("src.api.telemetry.fastf1.get_session") as mock_get_session:
+        mock_get_session.return_value = _build_session_with_specific_lap(15)
+        url = (
+            "/api/v1/telemetry/lap/"
+            "?year=2023&round_num=1&driver=VER&lap_number=15"
+        )
+
+        r1 = await async_client.get(url)
+        r2 = await async_client.get(url)
+
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        assert r1.json() == r2.json()
+        assert mock_get_session.call_count == 1

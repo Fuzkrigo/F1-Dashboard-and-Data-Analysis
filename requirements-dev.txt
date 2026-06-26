@@ -1,0 +1,22 @@
+# =============================================================================
+# requirements-dev.txt — F1 Insights Engine (test/dev only)
+#
+# [EN] Test and tooling dependencies, kept separate from the runtime deps.
+# Install everything (runtime + test) with:
+#   pip install -r requirements-dev.txt
+# (the -r line below pulls in the pinned runtime requirements).
+#
+# [PT-BR] Dependências de teste/ferramentas, separadas das de runtime.
+# Instale tudo (runtime + teste) com:
+#   pip install -r requirements-dev.txt
+# (a linha -r abaixo puxa as dependências de runtime já fixadas).
+#
+# Author: Bruno Krieger
+# =============================================================================
+
+-r requirements.txt
+
+pytest==9.0.2
+pytest-asyncio==1.3.0
+pytest-cov==7.1.0
+httpx==0.28.1

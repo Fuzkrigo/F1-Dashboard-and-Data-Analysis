@@ -4,10 +4,13 @@ Telemetry API Route Definitions Module (V2 - Multi-Driver).
 [EN] Defines the FastAPI route handlers for the FastF1 live timing engine.
 Exposes real telemetry traces (Speed, Gear, RPM, Throttle, Brake)
 and track location data (X,Y,Z) for multiple drivers simultaneously.
+Responses are memoized in the database (see telemetry_cache) so repeat
+requests skip the slow FastF1 download.
 
 [PT-BR] Define os handlers de rotas do FastAPI para a engine de live timing FastF1.
 Expoe rastros reais de telemetria e coordenadas espaciais da pista
-para multiplos pilotos simultaneamente.
+para multiplos pilotos simultaneamente. As respostas sao memoizadas no banco
+(ver telemetry_cache) para que requisicoes repetidas pulem o download lento.
 
 Author: Bruno Krieger
 """
@@ -18,7 +21,11 @@ from typing import Any
 
 import fastf1
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api import telemetry_cache
+from src.db.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +54,7 @@ async def get_telemetry(
     session_type: str = Query(
         "R", description="Session type (R for Race, Q for Qualifying)"
     ),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get Lap Chart + KPI data for Multiple Drivers.
@@ -56,6 +64,13 @@ async def get_telemetry(
     [PT-BR] Retorna tempos de volta, compostos e mapa para os pilotos selecionados.
     Telemetria detalhada NAO inclusa - use /telemetry/lap/ para voltas especificas.
     """
+    cache_key = telemetry_cache.make_session_key(
+        year, round_num, session_type, drivers
+    )
+    cached = await telemetry_cache.get_cached(db, cache_key)
+    if cached is not None:
+        return cached
+
     try:
         session_obj = fastf1.get_session(year, round_num, session_type)
         session_obj.load(telemetry=True, weather=False, messages=False, livedata=None)
@@ -104,7 +119,8 @@ async def get_telemetry(
                         "y": [_sanitize_nan(x) for x in drv_tel["Y"]],
                     }
 
-            except Exception as e_driver:
+            except Exception as e_driver:  # pylint: disable=broad-exception-caught
+                # Isolate per-driver failures so one bad driver doesn't sink all.
                 logger.warning(f"Error parsing driver {driver_code}: {e_driver}")
                 continue
 
@@ -114,6 +130,7 @@ async def get_telemetry(
                 detail="No telemetry could be processed for any of the selected drivers.",
             )
 
+        await telemetry_cache.set_cached(db, cache_key, response_data)
         return response_data
 
     except HTTPException:
@@ -122,7 +139,8 @@ async def get_telemetry(
         raise
     except KeyError as e:
         raise HTTPException(status_code=400, detail=f"FastF1 data error: {str(e)}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Catch-all -> 500: unexpected errors are logged, never silently dropped.
         logger.exception("Unexpected error in telemetry endpoint")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -136,6 +154,7 @@ async def get_lap_telemetry(
     session_type: str = Query(
         "R", description="Session type (R for Race, Q for Qualifying)"
     ),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get Telemetry for a Specific Lap of a Specific Driver.
@@ -144,6 +163,13 @@ async def get_lap_telemetry(
     for the requested lap number of the given driver.
     [PT-BR] Retorna arrays de telemetria precisa para a volta solicitada do piloto.
     """
+    cache_key = telemetry_cache.make_lap_key(
+        year, round_num, session_type, driver, lap_number
+    )
+    cached = await telemetry_cache.get_cached(db, cache_key)
+    if cached is not None:
+        return cached
+
     try:
         session_obj = fastf1.get_session(year, round_num, session_type)
         session_obj.load(telemetry=True, weather=False, messages=False, livedata=None)
@@ -169,9 +195,11 @@ async def get_lap_telemetry(
         lap_tel = lap_row.get_telemetry()
         lap_tel["Distance"] = lap_tel["Distance"] - lap_tel["Distance"].iloc[0]
 
-        lap_time_str = str(lap_row["LapTime"])[-12:] if pd.notna(lap_row["LapTime"]) else "N/A"
+        lap_time_str = (
+            str(lap_row["LapTime"])[-12:] if pd.notna(lap_row["LapTime"]) else "N/A"
+        )
 
-        return {
+        response_data = {
             "driver": driver,
             "lap_number": int(lap_number),
             "lap_time": lap_time_str,
@@ -187,6 +215,8 @@ async def get_lap_telemetry(
                 "drs": [_sanitize_nan(x) for x in lap_tel["DRS"]],
             },
         }
+        await telemetry_cache.set_cached(db, cache_key, response_data)
+        return response_data
 
     except HTTPException:
         # Re-raise explicit HTTP errors without wrapping them as 500
@@ -194,6 +224,7 @@ async def get_lap_telemetry(
         raise
     except KeyError as e:
         raise HTTPException(status_code=400, detail=f"FastF1 data error: {str(e)}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Catch-all -> 500: unexpected errors are logged, never silently dropped.
         logger.exception("Unexpected error in telemetry endpoint")
         raise HTTPException(status_code=500, detail=str(e))
