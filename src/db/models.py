@@ -17,7 +17,18 @@ cobrindo todas as entidades de dados da API Ergast/Jolpica F1.
 Author: Bruno Krieger
 """
 
-from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String
+from sqlalchemy import (
+    JSON,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -786,3 +797,62 @@ class Status(Base):
         Author: Bruno Krieger
         """
         return f"<Status(id={self.id}, status='{self.status}')>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TelemetryCache (memoization of computed FastF1 telemetry responses)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TelemetryCache(Base):
+    """
+    ORM model that memoizes computed telemetry responses.
+
+    [EN] Maps to the 'telemetry_cache' table. Stores the JSON response already
+    computed from FastF1 for a given request, keyed by a deterministic
+    ``cache_key`` (e.g. "telemetry:2023:15:R:HAM,VER"). A cache hit serves the
+    payload straight from Postgres, skipping the slow FastF1 download and pandas
+    processing. ``last_accessed_at`` enables a TTL-based cleanup that keeps only
+    the recently used "hot set", bounding the cache size.
+
+    [PT-BR] Mapeia para a tabela 'telemetry_cache'. Guarda a resposta JSON já
+    computada do FastF1 para uma requisição, indexada por um ``cache_key``
+    determinístico (ex: "telemetry:2023:15:R:HAM,VER"). Um acerto de cache serve
+    o payload direto do Postgres, evitando o download lento do FastF1 e o
+    processamento em pandas. ``last_accessed_at`` habilita uma limpeza por TTL
+    que mantém só o "conjunto quente" recente, limitando o tamanho do cache.
+
+    Attributes:
+        id (int): Primary key. / Chave primária.
+        cache_key (str): Deterministic request key (unique). /
+                         Chave determinística da requisição (única).
+        payload (dict): Cached JSON response. / Resposta JSON em cache.
+        created_at (datetime): When it was first cached. / Quando foi cacheado.
+        last_accessed_at (datetime): Last cache hit (drives TTL cleanup). /
+                         Último acerto de cache (guia a limpeza por TTL).
+
+    Author: Bruno Krieger
+    """
+
+    __tablename__ = "telemetry_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cache_key = Column(String, unique=True, index=True, nullable=False)
+    payload = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_accessed_at = Column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self):
+        """
+        Return a string representation of the TelemetryCache instance.
+
+        [EN] Returns a human-readable string for debugging.
+        [PT-BR] Retorna uma string legível para depuração.
+
+        Author: Bruno Krieger
+        """
+        return f"<TelemetryCache(cache_key='{self.cache_key}')>"
