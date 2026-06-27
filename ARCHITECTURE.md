@@ -132,7 +132,8 @@ erDiagram
 - **Banco** → **Supabase** (PostgreSQL gerenciado). Acesso apenas pelo backend (papel
   `postgres`); o frontend **não** lê o Supabase direto — o FastAPI é o protagonista.
 - **API** → **Render** (container), lendo do Supabase. Um GitHub Action de *keep-alive*
-  reduz o cold start do plano gratuito.
+  reduz o cold start do plano gratuito. As respostas tabulares enviam
+  `Cache-Control` (cache no navegador).
 - **Frontend** → **Vercel** (estático global). A URL da API é resolvida por ambiente
   (`config.js`); as requisições de cada tela são paralelizadas (`Promise.all`) e cacheadas em memória na sessão.
 - **Telemetria** → FastF1 sob demanda, com memoization no Supabase (`telemetry_cache`).
