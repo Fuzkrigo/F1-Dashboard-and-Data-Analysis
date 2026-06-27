@@ -1,0 +1,37 @@
+# =============================================================================
+# Keep-alive — F1 Insights Engine API (Render free tier)
+#
+# [EN] Pings the Render API root `/` (which does NOT query the database) to keep
+# the free instance awake and avoid the ~20-45s cold start for visitors. Active
+# only during BRT 10:00-23:59 (= UTC 13:00-02:59) to spare Render's free hours;
+# off overnight. BRT = UTC-3 (Brazil has no DST). Pings Render ONLY — it does not
+# touch Vercel or Supabase.
+#
+# [PT-BR] Pinga a raiz `/` da API no Render (que NÃO consulta o banco) para manter
+# a instância free acordada e evitar o cold start de ~20-45s. Ativo só no horário
+# BRT 10:00-23:59 (= UTC 13:00-02:59) para poupar as horas grátis do Render;
+# desligado de madrugada. BRT = UTC-3 (Brasil sem horário de verão). Pinga SÓ o
+# Render — não toca Vercel nem Supabase.
+#
+# Author: Bruno Krieger
+# =============================================================================
+name: Keep-alive API
+
+on:
+  schedule:
+    # A cada 10 min na janela ativa. O cron do GitHub é em UTC.
+    - cron: "*/10 13-23 * * *"   # UTC 13:00-23:59  = BRT 10:00-20:59
+    - cron: "*/10 0-2 * * *"     # UTC 00:00-02:59  = BRT 21:00-23:59
+  workflow_dispatch: {}           # permite acionar manualmente pela aba Actions
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API health endpoint (/)
+        run: >
+          curl -fsS --retry 3 --retry-delay 5 --retry-all-errors --max-time 90
+          -o /dev/null https://f1-engine-api.onrender.com/
