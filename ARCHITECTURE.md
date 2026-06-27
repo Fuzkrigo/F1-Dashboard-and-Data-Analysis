@@ -30,10 +30,10 @@ flowchart LR
     end
 
     J -->|extract| ETL["ETL Pipeline<br/>extract · transform · load"]
-    ETL -->|persiste| DB[("SQLite / PostgreSQL")]
-    DB --> API["FastAPI REST<br/>(somente leitura)"]
-    FF -->|sob demanda| API
-    API -->|JSON| WEB["Frontend SPA<br/>HTML · CSS · JS · Plotly"]
+    ETL -->|persiste| DB[("Supabase<br/>PostgreSQL gerenciado")]
+    DB --> API["FastAPI REST<br/>(Render · somente leitura)"]
+    FF -->|sob demanda + cache| API
+    API -->|JSON| WEB["Frontend SPA<br/>(Vercel) · Plotly"]
     WEB --> USER((Usuário))
 ```
 
@@ -44,7 +44,7 @@ flowchart LR
 | Camada | Diretório | Responsabilidade |
 | ------ | --------- | ---------------- |
 | **Ingestão (ETL)** | `src/etl/` | Extrair da API, transformar para o schema e carregar no banco de forma idempotente |
-| **Persistência** | `src/db/` | Modelos ORM (SQLAlchemy async) e configuração de engine (SQLite ou PostgreSQL) |
+| **Persistência** | `src/db/` | Modelos ORM (SQLAlchemy async); banco no **Supabase** (PostgreSQL gerenciado) em produção, SQLite localmente |
 | **API** | `src/api/` | Endpoints REST somente-leitura + endpoint de telemetria (FastF1) |
 | **Apresentação** | `src/web/` | SPA nativa que consome a API e renderiza gráficos interativos (Plotly) |
 
@@ -65,8 +65,9 @@ temporadas e carga opcional de tempos de volta (alto volume).
 
 ### Persistência
 
-SQLAlchemy assíncrono, com troca entre **SQLite** (desenvolvimento) e **PostgreSQL**
-(produção) por variável de ambiente. O schema cobre **12 entidades** do domínio de F1.
+SQLAlchemy assíncrono. Em produção o banco é o **Supabase** (PostgreSQL gerenciado),
+selecionado via `DATABASE_URL`; localmente cai para **SQLite** por padrão. O schema
+cobre **14 tabelas** (13 do domínio de F1 + `telemetry_cache`, memoization da telemetria).
 
 ### API
 
@@ -95,9 +96,10 @@ erDiagram
     RACE ||--o{ LAP_TIME : registra
 ```
 
-> O domínio completo possui 12 entidades: temporadas, circuitos, pilotos, construtores,
-> corridas, resultados, classificação (qualifying), sprint, classificações de pilotos e
-> de construtores, pit stops, tempos de volta e status de finalização.
+> O domínio possui 13 entidades: temporadas, circuitos, pilotos, construtores, corridas,
+> resultados, classificação (qualifying), sprint, classificações de pilotos e de
+> construtores, pit stops, tempos de volta e status. Há ainda a `telemetry_cache`
+> (memoization da telemetria), totalizando 14 tabelas.
 
 ---
 
@@ -108,9 +110,11 @@ erDiagram
 | **Frontend** | HTML/CSS/JS puro | Performático, zero build, controle total do design |
 | **API** | FastAPI + Uvicorn | Async nativo, tipagem forte (Pydantic), docs automáticas |
 | **ORM** | SQLAlchemy async | Abstrai SQLite/PostgreSQL e mantém o código de banco agnóstico |
-| **Banco (dev/prod)** | SQLite ↔ PostgreSQL | Zero config localmente; robustez em produção, via env var |
+| **Banco** | Supabase (PostgreSQL) | Gerenciado em produção; SQLite localmente. Troca via `DATABASE_URL` |
 | **Carga** | ETL idempotente | Reexecutável com segurança; *caches* de FK evitam N+1 |
-| **Telemetria** | FastF1 | Biblioteca de referência para *live timing* oficial da F1 |
+| **Telemetria** | FastF1 + cache | Live timing oficial; respostas memoizadas no Supabase |
+| **Deploy** | Render (API) + Vercel (front) | Container para FastF1/FastAPI; estático global para a SPA |
+| **CI** | GitHub Actions | ruff + pytest (cobertura) + Vitest a cada PR |
 
 ---
 
@@ -123,14 +127,19 @@ erDiagram
 
 ---
 
-## Direção da evolução
+## Hospedagem e operação (atual)
 
-A arquitetura está evoluindo para um modelo de hospedagem gerenciada, mantendo a
-mesma separação entre ingestão e leitura:
+- **Banco** → **Supabase** (PostgreSQL gerenciado). Acesso apenas pelo backend (papel
+  `postgres`); o frontend **não** lê o Supabase direto — o FastAPI é o protagonista.
+- **API** → **Render** (container), lendo do Supabase. Um GitHub Action de *keep-alive*
+  reduz o cold start do plano gratuito.
+- **Frontend** → **Vercel** (estático global). A URL da API é resolvida por ambiente
+  (`config.js`); as requisições de cada tela são paralelizadas (`Promise.all`).
+- **Telemetria** → FastF1 sob demanda, com memoization no Supabase (`telemetry_cache`).
+- **CI** → GitHub Actions: lint + testes + cobertura a cada PR.
 
-- **Banco** → **Supabase** (PostgreSQL gerenciado), com leitura direta pelo frontend
-  via API automática e regras de acesso somente-leitura.
-- **Deploy** → **Vercel** para o frontend estático.
-- **Telemetria** → serviço dedicado, com cache dos resultados para acelerar acessos
-  repetidos.
-- **Ingestão** → agendada via CI, mantendo o banco atualizado de forma automática.
+### Próximos
+- Ingestão agendada/incremental via GitHub Actions.
+- Pré-aquecimento do cache de telemetria (o processamento do FastF1 não cabe no plano
+  gratuito do Render).
+- Endurecimento de segurança (RLS no Supabase) antes da divulgação ampla.
