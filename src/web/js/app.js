@@ -328,13 +328,14 @@ async function fetchAPI(endpoint) {
 // 1. Overview Controller
 async function loadOverview(season) {
     try {
-        // Fetch races for count
-        const races = await fetchAPI(`/races/?season=${season}&limit=100`);
+        // [PT-BR] As 3 buscas são independentes -> em paralelo (antes eram em série).
+        // [EN] The 3 fetches are independent -> run in parallel (was sequential).
+        const [races, driverSt, constructorSt] = await Promise.all([
+            fetchAPI(`/races/?season=${season}&limit=100`),
+            fetchAPI(`/standings/drivers/?season=${season}`),
+            fetchAPI(`/standings/constructors/?season=${season}`),
+        ]);
         document.getElementById('kpi-races').textContent = races.length;
-
-        // Fetch standings
-        const driverSt = await fetchAPI(`/standings/drivers/?season=${season}`);
-        const constructorSt = await fetchAPI(`/standings/constructors/?season=${season}`);
 
         // Update Driver Leader KPI (nome/codigo ja vem no standing enriquecido)
         if (driverSt.length > 0) {
@@ -455,8 +456,12 @@ async function loadTelemetry(season) {
 
         racesSelect.innerHTML = '<option value="" disabled selected>Carregando Corridas...</option>';
 
-        // Busca corridas da temporada
-        const races = await fetchAPI(`/races/?season=${season}&limit=100`);
+        // [PT-BR] Corridas e classificação em paralelo (antes em série).
+        // [EN] Races and standings in parallel (was sequential).
+        const [races, standings] = await Promise.all([
+            fetchAPI(`/races/?season=${season}&limit=100`),
+            fetchAPI(`/standings/drivers/?season=${season}`),
+        ]);
         if (races.length === 0) {
             racesSelect.innerHTML = '<option disabled>Sem Corridas</option>';
             return;
@@ -471,8 +476,7 @@ async function loadTelemetry(season) {
             racesSelect.appendChild(opt);
         });
 
-        // Configurar dropdowns de pilotos baseados na temporada e classificação (para ter top drivers)
-        const standings = await fetchAPI(`/standings/drivers/?season=${season}`);
+        // Configurar dropdowns de pilotos (standings já carregado em paralelo acima).
         const listDrivers = standings.length > 0 ? standings : [];
 
         // Seletores Antigos Extintos. Pegar Container de Toggles e Botão Gerar
@@ -985,12 +989,12 @@ async function loadEvolution(season) {
         const raceIds = races.map(r => r.id);
         const raceNames = races.map(r => `R${r.round}`);
 
-        // Buscar resultados do ano construindo o gráfico por corrida para respeitar o limite de 500 registros por query da API
-        let allResults = [];
-        for (let rid of raceIds) {
-            const raceRes = await fetchAPI(`/results/?race_id=${rid}&limit=500`);
-            allResults = allResults.concat(raceRes);
-        }
+        // [PT-BR] Resultados por corrida em PARALELO (antes: loop em série de ~24 fetches).
+        // [EN] Per-race results in PARALLEL (was a ~24-fetch sequential loop).
+        const resultsByRace = await Promise.all(
+            raceIds.map((rid) => fetchAPI(`/results/?race_id=${rid}&limit=500`))
+        );
+        const allResults = resultsByRace.flat();
 
         const renderChart = async () => {
             const isDrivers = typeSelect.value === 'drivers';
@@ -1133,12 +1137,11 @@ async function loadH2H(season) {
             const d2 = d2Select.value;
             if(!d1 || !d2) return;
 
-            const [res1, res2] = await Promise.all([
+            const [res1, res2, races] = await Promise.all([
                 fetchAPI(`/results/?season=${season}&driver_id=${d1}&limit=500`),
-                fetchAPI(`/results/?season=${season}&driver_id=${d2}&limit=500`)
+                fetchAPI(`/results/?season=${season}&driver_id=${d2}&limit=500`),
+                fetchAPI(`/races/?season=${season}&limit=100`),
             ]);
-
-            const races = await fetchAPI(`/races/?season=${season}&limit=100`);
             races.sort((a,b) => a.round - b.round);
             const raceNames = races.map(r => `R${r.round}`);
             const raceIds = races.map(r => r.id);
