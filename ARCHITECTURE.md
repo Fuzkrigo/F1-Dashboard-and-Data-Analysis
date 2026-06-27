@@ -134,7 +134,7 @@ erDiagram
 - **API** → **Render** (container), lendo do Supabase. Um GitHub Action de *keep-alive*
   reduz o cold start do plano gratuito.
 - **Frontend** → **Vercel** (estático global). A URL da API é resolvida por ambiente
-  (`config.js`); as requisições de cada tela são paralelizadas (`Promise.all`).
+  (`config.js`); as requisições de cada tela são paralelizadas (`Promise.all`) e cacheadas em memória na sessão.
 - **Telemetria** → FastF1 sob demanda, com memoization no Supabase (`telemetry_cache`).
 - **CI** → GitHub Actions: lint + testes + cobertura a cada PR.
 

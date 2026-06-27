@@ -310,10 +310,29 @@ function refreshCurrentView() {
 // ============================================================================
 // API Fetch Helpers
 // ============================================================================
-async function fetchAPI(endpoint) {
-    const res = await fetch(`${API_BASE}${endpoint}`);
-    if (!res.ok) throw new Error(`API returned ${res.status}`);
-    return res.json();
+// [PT-BR] Cache em memória por URL: os dados tabulares são estáticos na sessão.
+// Cacheia a Promise (deduplica chamadas concorrentes idênticas) e remove a
+// entrada em caso de falha (permite retry, não "congela" erro transitório).
+// [EN] In-memory per-URL cache: tabular data is static within a session. Caches
+// the Promise (dedupes concurrent identical calls) and evicts on failure
+// (allows retry instead of caching a transient error).
+const apiCache = new Map();
+
+function fetchAPI(endpoint) {
+    if (apiCache.has(endpoint)) return apiCache.get(endpoint);
+
+    const promise = fetch(`${API_BASE}${endpoint}`)
+        .then((res) => {
+            if (!res.ok) throw new Error(`API returned ${res.status}`);
+            return res.json();
+        })
+        .catch((err) => {
+            apiCache.delete(endpoint);
+            throw err;
+        });
+
+    apiCache.set(endpoint, promise);
+    return promise;
 }
 
 // ============================================================================
