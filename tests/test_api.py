@@ -360,6 +360,29 @@ async def test_standings(async_client):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Cache-Control (R5 perf #4) / Cabeçalho de cache
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_tabular_get_has_cache_control(async_client):
+    """Tabular GET responses carry Cache-Control so the browser can cache them."""
+    res = await async_client.get("/api/v1/seasons/?limit=10")
+    assert res.status_code == 200
+    assert res.headers.get("cache-control") == "public, max-age=3600"
+
+
+@pytest.mark.asyncio
+async def test_health_and_root_are_not_cached(async_client):
+    """Health and root stay uncached (keep-alive/monitoring need fresh checks)."""
+    root = await async_client.get("/")
+    assert "cache-control" not in root.headers
+
+    health = await async_client.get("/api/v1/health")
+    assert "cache-control" not in health.headers
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Detail endpoints — get by ID (404 + 200)
 # ─────────────────────────────────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ Author: Bruno Krieger
 
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from src.api import routes, telemetry
 from src.core.logging_config import configure_logging
@@ -36,6 +36,32 @@ app.add_middleware(
     allow_methods=["GET", "OPTIONS"],  # Security: API is Read-Only
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    """
+    [EN] Adds Cache-Control to read-only tabular GET responses so the browser can
+    reuse them across reloads/tabs. Telemetry (heavy/on-demand) and health/root
+    are excluded so they stay fresh.
+
+    [PT-BR] Adiciona Cache-Control nas respostas tabulares (GET somente-leitura)
+    para o navegador reaproveitar entre reloads/abas. Telemetria (pesada/sob
+    demanda) e health/raiz ficam de fora para permanecerem sempre frescos.
+
+    Author: Bruno Krieger
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if (
+        request.method == "GET"
+        and path.startswith("/api/v1/")
+        and "/telemetry" not in path
+        and "/health" not in path
+    ):
+        response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
 
 app.include_router(routes.router, prefix="/api/v1")
 app.include_router(telemetry.router, prefix="/api/v1")
