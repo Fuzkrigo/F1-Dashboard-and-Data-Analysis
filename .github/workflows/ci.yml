@@ -1,0 +1,63 @@
+# =============================================================================
+# CI — F1 Insights Engine
+#
+# [EN] Runs on every push to main and on every pull request. Two parallel jobs:
+# backend (ruff lint + pytest with coverage gate) and frontend (vitest).
+# No secrets needed: conftest.py forces SQLite, so tests never touch Supabase.
+#
+# [PT-BR] Roda a cada push na main e em toda pull request. Dois jobs paralelos:
+# backend (lint com ruff + pytest com porta de cobertura) e frontend (vitest).
+# Sem segredos: o conftest.py força SQLite, então os testes nunca tocam o Supabase.
+#
+# Author: Bruno Krieger
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (ruff + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check src tests
+
+      - name: Tests + coverage
+        run: pytest --cov=src --cov-report=term-missing --cov-fail-under=80
+
+  frontend:
+    name: Frontend (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests (vitest)
+        run: npm run test
